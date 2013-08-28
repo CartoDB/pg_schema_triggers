@@ -1,0 +1,25 @@
+{
+    "name": "pg_schema_triggers",
+    "abstract": "Support for event triggers on schema changes for Postgres 9.3 and higher.",
+    "provides": {
+        "schema_triggers": {
+            "file": "pg_schema_triggers--0.1.sql",
+            "version": "0.1.0",
+            "abstract": "Extends CREATE EVENT TRIGGER with new events for table and column changes."
+        }
+    },
+    "tags": ["event triggers", "schema", "audit", "alter table"],
+    "version": "0.1.0",
+    "release_status": "testing",
+    "resources": {
+        "repository": {
+            "web": "http://code.malloclabs.com/pg_schema_triggers"
+        }
+    },
+    "maintainer": "Andrew Tipton <andrew@kiwidrew.com>",
+    "license": "postgresql",
+    "meta-spec": {
+        "version": "1.0.0",
+        "url": "http://pgxn.org/meta/spec.txt"
+    }
+}
