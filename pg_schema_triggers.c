@@ -148,6 +148,7 @@ static int
 stmt_listen_before(ListenStmt *stmt)
 {
 	elog(NOTICE, "stmt_listen_before: channel=\"%s\"", stmt->conditionname);
+	FireEventTriggers("stmt.listen.before", stmt->conditionname);
 	return 0;
 }
 
@@ -156,5 +157,6 @@ static int
 stmt_listen_after(ListenStmt *stmt)
 {
 	elog(NOTICE, "stmt_listen_after: channel=\"%s\"", stmt->conditionname);
+	FireEventTriggers("stmt.listen.after", stmt->conditionname);
 	return 1;
 }

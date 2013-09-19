@@ -18,11 +18,22 @@ installed (`make install`) and then use the CREATE EXTENSION mechanism:
 
     CREATE EXTENSION pg_schema_triggers;
 
-Once installed, the `pg_schema_triggers` extension allows new event names to
-be used with the CREATE EVENT TRIGGER command.
+In order for the extension to work (that is, for CREATE EVENT TRIGGER to
+recognize the new events and for the event triggers to be fired upon those
+events happening) the `pg_schema_triggers.so` library must be loaded.  Add
+a line to `postgresql.conf`:
+
+    shared_preload_libraries = pg_schema_triggers.so
+
+Once installed, the following events will be recognized:
 
     Event Name            Description
     --------------------  ----------------------------------------------------
+    stmt.listen.before    Immediately before/after executing LISTEN ...;  the
+    stmt.listen.after     TG_TAG variable is the channel name.  If the .before
+                          trigger raises an exception, the LISTEN will not be
+                          permitted.
+
     `column_add`          ALTER TABLE ... ADD COLUMN ...
     `column_alter_type`   ALTER TABLE ... ALTER COLUMN ... SET DATA TYPE ...
     `column_drop`         ALTER TABLE ... DROP COLUMN ...
