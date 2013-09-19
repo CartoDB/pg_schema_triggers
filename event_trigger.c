@@ -15,6 +15,7 @@
 #include "miscadmin.h"
 #include "access/hash.h"
 #include "access/htup_details.h"
+#include "access/xact.h"
 #include "catalog/dependency.h"
 #include "catalog/indexing.h"
 #include "catalog/objectaccess.h"
@@ -22,15 +23,22 @@
 #include "catalog/pg_event_trigger.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
+#include "commands/event_trigger.h"
 #include "commands/trigger.h"
 #include "parser/parse_func.h"
+#include "pgstat.h"
 #include "tcop/utility.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
+#include "utils/memutils.h"
 #include "utils/rel.h"
+#include "utils/snapmgr.h"
 #include "utils/syscache.h"
 
 #include "pg_schema_triggers.h"
+
+
+List * find_event_triggers_for_event(const char *eventname);
 
 
 Oid
@@ -126,15 +134,150 @@ CreateEventTriggerEx(const char *eventname, const char *trigname, Oid trigfunc)
 
 
 /*
- * Invoke any event triggers which are registered for the given event name.
+ * Fire any event triggers which are registered for the given event name.
  *
- * Unfortunately this code, similar to CreateEventTriggerEx(), has to cut-and-
- * paste a bunch of stuff from commands/event_trigger.c as there is no clean
- * API for adding new events.
+ * Unfortunately much of this code is copied from commands/event_trigger.c
+ * and utils/cache/evtcache.c, as there is no clean API for invoking an
+ * arbitrary event trigger by name.  (The existing code uses an enum, not
+ * a string, for invoking event triggers.)
  */
 void
-InvokeEventTriggers(const char *eventname)
+FireEventTriggers(const char *eventname, const char *tag)
 {
+	MemoryContext context;
+	MemoryContext oldcontext;
+	List *runlist;
+	ListCell *lc;
+	bool first = true;
+
+	EventTriggerData trigdata;
+
+	/* Event triggers are completely disabled in standalone mode. */
+	if (!IsUnderPostmaster)
+		return;
+
+	/* Guard against stack overflow due to recursive event trigger. */
+	check_stack_depth();
+
+	/* Do we have any event triggers to fire? */
+	runlist = find_event_triggers_for_event(eventname);
+	if (runlist == NIL)
+		return;
+
+	/*
+	 * Evaluate event triggers in a new memory context, to ensure any
+	 * leaks get cleaned up promptly.
+	 */
+	context = AllocSetContextCreate(CurrentMemoryContext,
+                                    "event trigger context",
+                                    ALLOCSET_DEFAULT_MINSIZE,
+                                    ALLOCSET_DEFAULT_INITSIZE,
+                                    ALLOCSET_DEFAULT_MAXSIZE);
+    oldcontext = MemoryContextSwitchTo(context);
+
+	/* Set up the event trigger data. */
+	trigdata.type = T_EventTriggerData;
+	trigdata.event = eventname;
+	trigdata.parsetree = NULL;   /* XXX:  can we do this? */
+	trigdata.tag = tag;
+
+	/* Fire each event trigger that matched. */
+	foreach(lc, runlist)
+	{
+		Oid         fnoid = lfirst_oid(lc);
+		FmgrInfo    flinfo;
+		FunctionCallInfoData fcinfo;
+		PgStat_FunctionCallUsage fcusage;
+
+		/* Ensure each event trigger can see the previous one's result. */
+		if (first)
+			first = false;
+		else
+			CommandCounterIncrement();
+
+		/* Look up the function. */
+		fmgr_info(fnoid, &flinfo);
+
+		/* Call the function, passing no arguments but setting a context. */
+		InitFunctionCallInfoData(fcinfo, &flinfo, 0,
+								 InvalidOid, (Node *) &trigdata, NULL);
+		pgstat_init_function_usage(&fcinfo, &fcusage);
+        FunctionCallInvoke(&fcinfo);
+        pgstat_end_function_usage(&fcusage, true);
+
+		/* Reclaim memory. */
+		MemoryContextReset(context);
+	}
+
+	/* Restore the old memory context and delete the temporary one. */
+	MemoryContextSwitchTo(oldcontext);
+	MemoryContextDelete(context);
+
+	/* Cleanup. */
+	list_free(runlist);
+
+	/*
+	 * Make sure anything the event triggers did will be visible to the main
+	 * command.
+	 */
+	CommandCounterIncrement();
+}
 
 
+/*
+ * Scan (yes, seqscan) through pg_event_triggers to find any enabled event
+ * triggers for the given event name, and return a List of function Oids to
+ * execute.
+ *
+ * TODO:  build a cache, so we don't have to seqscan each time.
+ */
+List *
+find_event_triggers_for_event(const char *eventname)
+{
+	List       *funclist = NIL;
+	Relation    rel;
+	Relation    irel;
+	SysScanDesc	scan;
+
+	/*
+	 * Open pg_event_trigger and do a full scan, ordered by the event trigger's
+	 * name.
+	 *
+	 * XXX:  is GetLatestSnapshot() really what we should be using here?
+	 */
+	rel = relation_open(EventTriggerRelationId, AccessShareLock);
+	irel = index_open(EventTriggerNameIndexId, AccessShareLock);
+	scan = systable_beginscan_ordered(rel, irel, GetLatestSnapshot(), 0, NULL);
+	for (;;)
+	{
+		HeapTuple   tup;
+		Form_pg_event_trigger form;
+		char       *evtevent;
+
+		/* Get next tuple. */
+		tup = systable_getnext_ordered(scan, ForwardScanDirection);
+		if (!HeapTupleIsValid(tup))
+			break;
+
+	    /* Skip trigger if disabled. */
+        form = (Form_pg_event_trigger) GETSTRUCT(tup);
+        if (form->evtenabled == TRIGGER_DISABLED)
+            continue;
+
+        /* Check event name.  XXX:  we ignore evttags[] entirely. */
+        evtevent = NameStr(form->evtevent);
+        if (strcmp(evtevent, eventname) != 0)
+        	break;
+
+        /* Event trigger matches.  Add evtfoid to our list. */
+		funclist = lappend_oid(funclist, form->evtfoid);
+	}
+
+	/* Done with the scan. */
+	systable_endscan_ordered(scan);
+	index_close(irel, AccessShareLock);
+	relation_close(rel, AccessShareLock);
+
+	/* Return the list of functions to invoke. */
+	return funclist; 
 }
