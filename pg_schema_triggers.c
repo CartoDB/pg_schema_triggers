@@ -14,6 +14,8 @@
 #include "catalog/pg_type.h"
 #include "parser/parse_func.h"
 #include "tcop/utility.h"
+#include "utils/builtins.h"
+#include "utils/lsyscache.h"
 
 #include "pg_schema_triggers.h"
 
@@ -180,17 +182,18 @@ objectaccess_hook(ObjectAccessType access,
  */
 struct event {
 	char *eventname;
+	Oid rettype;
 	int nargs;
 	Oid argtypes[FUNC_MAX_ARGS];
 };
 
 struct event supported_events[] = {
-	{"stmt.listen.before", 	0, 	{}},
-	{"stmt.listen.after", 	0, 	{}},
-	{"relation.create", 	2,	{REGCLASSOID, NAMEOID}},
+	{"stmt.listen.before", 	EVTTRIGGEROID,	0, 	{}},
+	{"stmt.listen.after", 	EVTTRIGGEROID,	0, 	{}},
+	{"relation.create", 	VOIDOID,		2,	{REGCLASSOID, NAMEOID}},
 
 	/* end of list marker */
-	{NULL, 0, {}}
+	{NULL, InvalidOid, 0, {}}
 };
 
 /*
@@ -227,6 +230,13 @@ stmt_createEventTrigger_before(CreateEventTrigStmt *stmt)
 		elog(INFO, "pg_schema_triggers:  didn't recognize event name, ignoring.");
 		return 0;
 	}
+
+	/* Check the trigger function's return type. */
+    if (get_func_rettype(funcoid) != evt->rettype)
+        ereport(ERROR,
+                (errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+                 errmsg("function \"%s\" must return type \"%s\"",
+                        get_func_name(funcoid), format_type_be(evt->rettype))));
 
 	/* None of our events support the WHEN clause, so ensure that it is empty. */
 	if (stmt->whenclause)

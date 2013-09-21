@@ -41,12 +41,17 @@
 List * find_event_triggers_for_event(const char *eventname);
 
 
+/*
+ * Create an event trigger for the given event name which will call the
+ * function 'trigfunc'.  Note that this function does not check that the event
+ * name is valid, nor does it check that the function has the right number
+ * and type of arguments or the correct return type.
+ */
 Oid
 CreateEventTriggerEx(const char *eventname, const char *trigname, Oid trigfunc)
 {
 	/* Declarations from CreateEventTrigger(). */
     HeapTuple   tuple;
-    Oid         funcrettype;
     Oid			evtOwner = GetUserId();
 
 	/* Declarations from insert_event_trigger_tuple(). */
@@ -82,14 +87,6 @@ CreateEventTriggerEx(const char *eventname, const char *trigname, Oid trigfunc)
                 (errcode(ERRCODE_DUPLICATE_OBJECT),
                  errmsg("event trigger \"%s\" already exists",
                         trigname)));
-
-    /* Validate the trigger function. */
-    funcrettype = get_func_rettype(trigfunc);
-    if (funcrettype != EVTTRIGGEROID)
-        ereport(ERROR,
-                (errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
-                 errmsg("function \"%s\" must return type \"event_trigger\"",
-                        get_func_name(trigfunc))));
 
     /* Open pg_event_trigger. */
     tgrel = heap_open(EventTriggerRelationId, RowExclusiveLock);
