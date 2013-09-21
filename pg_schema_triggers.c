@@ -10,8 +10,10 @@
 #include "postgres.h"
 #include "fmgr.h"
 #include "access/hash.h"
+#include "access/xact.h"
 #include "catalog/objectaccess.h"
 #include "catalog/objectaddress.h"
+#include "catalog/pg_class.h"
 #include "catalog/pg_type.h"
 #include "parser/parse_func.h"
 #include "tcop/utility.h"
@@ -264,7 +266,7 @@ static int
 stmt_listen_before(ListenStmt *stmt)
 {
 	elog(NOTICE, "stmt_listen_before: channel=\"%s\"", stmt->conditionname);
-	FireEventTriggers("stmt.listen.before", stmt->conditionname);
+	FireEventTriggers("stmt.listen.before", stmt->conditionname, 0, NULL);
 	return 0;
 }
 
@@ -273,7 +275,7 @@ static int
 stmt_listen_after(ListenStmt *stmt)
 {
 	elog(NOTICE, "stmt_listen_after: channel=\"%s\"", stmt->conditionname);
-	FireEventTriggers("stmt.listen.after", stmt->conditionname);
+	FireEventTriggers("stmt.listen.after", stmt->conditionname, 0, NULL);
 	return 1;
 }
 
@@ -281,22 +283,32 @@ stmt_listen_after(ListenStmt *stmt)
 static void
 object_post_create(ObjectAddress *object)
 {
-	elog(NOTICE, "object_post_create: classId=%d, objectId=%d, subId=%d",
-				 object->classId, object->objectId, object->objectSubId);
-	elog(NOTICE, "  (namespace=%d)", get_object_namespace(object));
+	if (object->classId == RelationRelationId)
+	{
+		char *nspname;
+		Datum args[2];
+
+		/*
+		 * Bump the command counter so that the newly-created relation is
+		 * visible, so that get_object_namespace() will work.
+		 */
+		CommandCounterIncrement();
+		nspname = get_namespace_name(get_object_namespace(object));
+		args[0] = ObjectIdGetDatum(object->objectId);
+		args[1] = CStringGetDatum(nspname);
+		FireEventTriggers("relation.create", NULL, sizeof(args), args);
+	}
 }
 
 static void
 object_post_alter(ObjectAddress *object, Oid auxObjId)
 {
-	elog(NOTICE, "object_post_alter: classId=%d, objectId=%d, auxObjId=%d, subId=%d",
-				 object->classId, object->objectId, auxObjId, object->objectSubId);
+	return;
 }
 
 
 static void
 object_drop(ObjectAddress *object, int dropflags)
 {
-	elog(NOTICE, "object_drop: classId=%d, objectId=%d, subId=%d, dropflags=%d",
-				 object->classId, object->objectId, object->objectSubId, dropflags);
+	return;
 }

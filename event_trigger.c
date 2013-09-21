@@ -139,15 +139,13 @@ CreateEventTriggerEx(const char *eventname, const char *trigname, Oid trigfunc)
  * a string, for invoking event triggers.)
  */
 void
-FireEventTriggers(const char *eventname, const char *tag)
+FireEventTriggers(const char *eventname, const char *tag, int nargs, Datum *args)
 {
 	MemoryContext context;
 	MemoryContext oldcontext;
 	List *runlist;
 	ListCell *lc;
 	bool first = true;
-
-	EventTriggerData trigdata;
 
 	/* Event triggers are completely disabled in standalone mode. */
 	if (!IsUnderPostmaster)
@@ -172,12 +170,6 @@ FireEventTriggers(const char *eventname, const char *tag)
                                     ALLOCSET_DEFAULT_MAXSIZE);
     oldcontext = MemoryContextSwitchTo(context);
 
-	/* Set up the event trigger data. */
-	trigdata.type = T_EventTriggerData;
-	trigdata.event = eventname;
-	trigdata.parsetree = NULL;   /* XXX:  can we do this? */
-	trigdata.tag = tag;
-
 	/* Fire each event trigger that matched. */
 	foreach(lc, runlist)
 	{
@@ -195,12 +187,45 @@ FireEventTriggers(const char *eventname, const char *tag)
 		/* Look up the function. */
 		fmgr_info(fnoid, &flinfo);
 
-		/* Call the function, passing no arguments but setting a context. */
-		InitFunctionCallInfoData(fcinfo, &flinfo, 0,
-								 InvalidOid, (Node *) &trigdata, NULL);
-		pgstat_init_function_usage(&fcinfo, &fcusage);
-        FunctionCallInvoke(&fcinfo);
-        pgstat_end_function_usage(&fcusage, true);
+		if (nargs == 0)
+		{
+			EventTriggerData trigdata;
+
+			/*
+			 * Set up a normal event trigger call, passing no arguments but
+			 * setting a context.
+			 */
+			trigdata.type = T_EventTriggerData;
+			trigdata.event = eventname;
+			trigdata.parsetree = NULL;   /* XXX:  can we do this? */
+			trigdata.tag = tag;
+
+			InitFunctionCallInfoData(fcinfo, &flinfo, 0,
+									InvalidOid, (Node *) &trigdata, NULL);
+
+			pgstat_init_function_usage(&fcinfo, &fcusage);
+			FunctionCallInvoke(&fcinfo);
+			pgstat_end_function_usage(&fcusage, true);
+		}
+		else
+		{
+			int i;
+
+			/* Set up a normal function call with arguments. */
+			InitFunctionCallInfoData(fcinfo, &flinfo, nargs,
+									InvalidOid, NULL, NULL);
+
+			Assert(tag == NULL);
+			for (i = 0; i < nargs; i++)
+			{
+				fcinfo.arg[i] = args[i];
+				fcinfo.argnull[i] = false;
+			}
+
+			pgstat_init_function_usage(&fcinfo, &fcusage);
+			FunctionCallInvoke(&fcinfo);
+			pgstat_end_function_usage(&fcusage, true);
+		}
 
 		/* Reclaim memory. */
 		MemoryContextReset(context);
