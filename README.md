@@ -24,6 +24,19 @@ CREATE EVENT TRIGGER command.
                           trigger raises an exception, the LISTEN will not be
                           permitted.
 
+	relation.create       New relation (table, view, index) has been created;
+	                      filters include "relkind" (t, v, i) and "schema".
+	                      Note that at the point that this event fires, the
+	                      relation DOES NOT YET have any column defaults or
+	                      constraints.  [Corresponds to OAT_CREATE hook.]
+
+	relation.rename
+	relation.drop
+
+	constraint.add
+	constraint.alter
+	constraint.drop
+
     `column_add`          ALTER TABLE ... ADD COLUMN ...
     `column_alter_type`   ALTER TABLE ... ALTER COLUMN ... SET DATA TYPE ...
     `column_drop`         ALTER TABLE ... DROP COLUMN ...

@@ -10,6 +10,7 @@
 #include "postgres.h"
 #include "fmgr.h"
 #include "access/hash.h"
+#include "catalog/objectaccess.h"
 #include "parser/parse_func.h"
 #include "tcop/utility.h"
 
@@ -23,13 +24,23 @@ void _PG_init(void);
 void _PG_fini(void);
 
 static ProcessUtility_hook_type old_utility_hook = NULL;
+static object_access_hook_type old_objectaccess_hook = NULL;
 
+static void objectaccess_hook(ObjectAccessType access,
+	Oid classId,
+	Oid objectId,
+	int subId,
+	void *arg);
 static void utility_hook(Node *parsetree,
 	const char *queryString,
 	ProcessUtilityContext context,
 	ParamListInfo params,
 	DestReceiver *dest,
 	char *completionTag);
+
+static void object_post_create(Oid classId, Oid objectId, int subId);
+static void object_post_alter(Oid classId, Oid objectId, Oid auxObjId, int subId);
+static void object_drop(Oid classId, Oid objectId, int subId, int dropflags);
 static int stmt_createEventTrigger_before(CreateEventTrigStmt *stmt);
 static int stmt_listen_before(ListenStmt *stmt);
 static int stmt_listen_after(ListenStmt *stmt);
@@ -46,19 +57,26 @@ void
 _PG_init(void)
 {
 	if (ProcessUtility_hook != NULL)
-		elog(FATAL, "oops, someone else has already hooked ProcessUtility.");
-
+		elog(FATAL, "a ProcessUtility hook is already installed.");
 	old_utility_hook = ProcessUtility_hook;
 	ProcessUtility_hook = utility_hook;
+
+	if (object_access_hook != NULL)
+		elog(FATAL, "an object_access hook is already installed.");
+	old_objectaccess_hook = object_access_hook;
+	object_access_hook = objectaccess_hook;
 }
 
 void
 _PG_fini(void)
 {
 	if (ProcessUtility_hook != utility_hook)
-		elog(FATAL, "hook conflict, unable to safely unload.");
-
+		elog(FATAL, "hook conflict, our ProcessUtility hook has been removed.");
 	ProcessUtility_hook = old_utility_hook;
+
+	if (object_access_hook != objectaccess_hook)
+		elog(FATAL, "hook conflict, our object_access hook has been removed.");
+	object_access_hook = old_objectaccess_hook;
 }
 
 
@@ -102,6 +120,54 @@ utility_hook(Node *parsetree,
 			stmt_listen_after((ListenStmt *) parsetree);
 			break;
 		default:
+			break;
+	}
+}
+
+
+/*
+ * We abuse the OAT_* hooks (which are intended for access control frameworks
+ * such as sepgsql) for getting notified on relation create, alter, and drop
+ * actions.  This is more reliable than digging around in the utility command
+ * parse trees, as these hooks are called from the internal functions which
+ * actually update the system catalogs, regardless of how those functions were
+ * invoked.
+ */
+static void
+objectaccess_hook(ObjectAccessType access,
+	Oid classId,
+	Oid objectId,
+	int subId,
+	void *arg)
+{
+	switch (access)
+	{
+		case OAT_POST_CREATE:
+			{
+				ObjectAccessPostCreate *args = (ObjectAccessPostCreate *)arg;
+
+				if (!args->is_internal)
+					object_post_create(classId, objectId, subId);
+			}
+			break;
+		case OAT_POST_ALTER:
+			{
+				ObjectAccessPostAlter *args = (ObjectAccessPostAlter *)arg;
+
+				if (!args->is_internal)
+					object_post_alter(classId, objectId, args->auxiliary_id, subId);
+			}
+			break;
+		case OAT_DROP:
+			{
+				ObjectAccessDrop *args = (ObjectAccessDrop *)arg;
+
+				object_drop(classId, objectId, subId, args->dropflags);
+			}
+			break;
+		case OAT_NAMESPACE_SEARCH:
+		case OAT_FUNCTION_EXECUTE:
+			/* Ignore these events. */
 			break;
 	}
 }
@@ -159,4 +225,27 @@ stmt_listen_after(ListenStmt *stmt)
 	elog(NOTICE, "stmt_listen_after: channel=\"%s\"", stmt->conditionname);
 	FireEventTriggers("stmt.listen.after", stmt->conditionname);
 	return 1;
+}
+
+
+static void
+object_post_create(Oid classId, Oid objectId, int subId)
+{
+	elog(NOTICE, "object_post_create: classId=%d, objectId=%d, subId=%d",
+				 classId, objectId, subId);
+}
+
+static void
+object_post_alter(Oid classId, Oid objectId, Oid auxObjId, int subId)
+{
+	elog(NOTICE, "object_post_alter: classId=%d, objectId=%d, auxObjId=%d, subId=%d",
+				 classId, objectId, auxObjId, subId);
+}
+
+
+static void
+object_drop(Oid classId, Oid objectId, int subId, int dropflags)
+{
+	elog(NOTICE, "object_drop: classId=%d, objectId=%d, subId=%d, dropflags=%d",
+				 classId, objectId, subId, dropflags);
 }
