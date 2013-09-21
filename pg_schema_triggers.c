@@ -11,6 +11,7 @@
 #include "fmgr.h"
 #include "access/hash.h"
 #include "catalog/objectaccess.h"
+#include "catalog/pg_type.h"
 #include "parser/parse_func.h"
 #include "tcop/utility.h"
 
@@ -174,6 +175,25 @@ objectaccess_hook(ObjectAccessType access,
 
 
 /*
+ * List of events that we recognize, along with the number and types of
+ * arguments that are passed to the event trigger function.
+ */
+struct event {
+	char *eventname;
+	int nargs;
+	Oid argtypes[FUNC_MAX_ARGS];
+};
+
+struct event supported_events[] = {
+	{"stmt.listen.before", 	0, 	{}},
+	{"stmt.listen.after", 	0, 	{}},
+	{"relation.create", 	2,	{REGCLASSOID, NAMEOID}},
+
+	/* end of list marker */
+	{NULL, 0, {}}
+};
+
+/*
  * Intercept CREATE EVENT TRIGGER statements with event names that we
  * recognize, and pass them to our own CreateEventTriggerEx() function.
  * Pass everything else through to ProcessUtility_standard otherwise.
@@ -182,13 +202,27 @@ static int
 stmt_createEventTrigger_before(CreateEventTrigStmt *stmt)
 {
     Oid         funcoid;
+    int			recognized = 0;
+    struct event *evt;
 
 	/*
-	 * If we don't recognize the event name, let the real CreateEventTrigger()
-	 * function handle it.
+	 * If we recognize the event name, look up the corresponding function.
+	 * Otherwise, fall through to the normal CreateEventTrigger() code.
 	 */
-	if (strcmp(stmt->eventname, "stmt.listen.before") != 0 &&
-	    strcmp(stmt->eventname, "stmt.listen.after") != 0)
+	for (evt = supported_events; evt->eventname != NULL; evt++)
+	{
+		if (strcmp(stmt->eventname, evt->eventname) != 0)
+			continue;
+
+		/*
+		 * LookupFuncName() will raise an error if it can't find a
+		 * function with the appropriate signature.
+		 */
+		funcoid = LookupFuncName(stmt->funcname, evt->nargs, evt->argtypes, false);
+		recognized = 1;
+		break;
+	}
+	if (!recognized)
 	{
 		elog(INFO, "pg_schema_triggers:  didn't recognize event name, ignoring.");
 		return 0;
@@ -202,7 +236,6 @@ stmt_createEventTrigger_before(CreateEventTrigStmt *stmt)
 						stmt->eventname)));
 
 	/* Create the event trigger. */
-    funcoid = LookupFuncName(stmt->funcname, 0, NULL, false);
     CreateEventTriggerEx(stmt->eventname, stmt->trigname, funcoid);
 
 	/* And skip the call to CreateEventTrigger(). */
