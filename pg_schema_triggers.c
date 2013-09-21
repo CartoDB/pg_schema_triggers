@@ -11,6 +11,7 @@
 #include "fmgr.h"
 #include "access/hash.h"
 #include "catalog/objectaccess.h"
+#include "catalog/objectaddress.h"
 #include "catalog/pg_type.h"
 #include "parser/parse_func.h"
 #include "tcop/utility.h"
@@ -41,9 +42,9 @@ static void utility_hook(Node *parsetree,
 	DestReceiver *dest,
 	char *completionTag);
 
-static void object_post_create(Oid classId, Oid objectId, int subId);
-static void object_post_alter(Oid classId, Oid objectId, Oid auxObjId, int subId);
-static void object_drop(Oid classId, Oid objectId, int subId, int dropflags);
+static void object_post_create(ObjectAddress *object);
+static void object_post_alter(ObjectAddress *object, Oid auxObjId);
+static void object_drop(ObjectAddress *object, int dropflags);
 static int stmt_createEventTrigger_before(CreateEventTrigStmt *stmt);
 static int stmt_listen_before(ListenStmt *stmt);
 static int stmt_listen_after(ListenStmt *stmt);
@@ -143,6 +144,12 @@ objectaccess_hook(ObjectAccessType access,
 	int subId,
 	void *arg)
 {
+	ObjectAddress object;
+
+	object.classId = classId;
+	object.objectId = objectId;
+	object.objectSubId = subId;
+
 	switch (access)
 	{
 		case OAT_POST_CREATE:
@@ -150,7 +157,7 @@ objectaccess_hook(ObjectAccessType access,
 				ObjectAccessPostCreate *args = (ObjectAccessPostCreate *)arg;
 
 				if (!args->is_internal)
-					object_post_create(classId, objectId, subId);
+					object_post_create(&object);
 			}
 			break;
 		case OAT_POST_ALTER:
@@ -158,14 +165,14 @@ objectaccess_hook(ObjectAccessType access,
 				ObjectAccessPostAlter *args = (ObjectAccessPostAlter *)arg;
 
 				if (!args->is_internal)
-					object_post_alter(classId, objectId, args->auxiliary_id, subId);
+					object_post_alter(&object, args->auxiliary_id);
 			}
 			break;
 		case OAT_DROP:
 			{
 				ObjectAccessDrop *args = (ObjectAccessDrop *)arg;
 
-				object_drop(classId, objectId, subId, args->dropflags);
+				object_drop(&object, args->dropflags);
 			}
 			break;
 		case OAT_NAMESPACE_SEARCH:
@@ -272,23 +279,24 @@ stmt_listen_after(ListenStmt *stmt)
 
 
 static void
-object_post_create(Oid classId, Oid objectId, int subId)
+object_post_create(ObjectAddress *object)
 {
 	elog(NOTICE, "object_post_create: classId=%d, objectId=%d, subId=%d",
-				 classId, objectId, subId);
+				 object->classId, object->objectId, object->objectSubId);
+	elog(NOTICE, "  (namespace=%d)", get_object_namespace(object));
 }
 
 static void
-object_post_alter(Oid classId, Oid objectId, Oid auxObjId, int subId)
+object_post_alter(ObjectAddress *object, Oid auxObjId)
 {
 	elog(NOTICE, "object_post_alter: classId=%d, objectId=%d, auxObjId=%d, subId=%d",
-				 classId, objectId, auxObjId, subId);
+				 object->classId, object->objectId, auxObjId, object->objectSubId);
 }
 
 
 static void
-object_drop(Oid classId, Oid objectId, int subId, int dropflags)
+object_drop(ObjectAddress *object, int dropflags)
 {
 	elog(NOTICE, "object_drop: classId=%d, objectId=%d, subId=%d, dropflags=%d",
-				 classId, objectId, subId, dropflags);
+				 object->classId, object->objectId, object->objectSubId, dropflags);
 }
