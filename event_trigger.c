@@ -139,10 +139,11 @@ CreateEventTriggerEx(const char *eventname, const char *trigname, Oid trigfunc)
  * a string, for invoking event triggers.)
  */
 void
-FireEventTriggers(const char *eventname, const char *tag, int nargs, Datum *args)
+FireEventTriggers(const char *eventname, const char *tag)
 {
-	MemoryContext context;
-	MemoryContext oldcontext;
+	MemoryContext mcontext;
+	MemoryContext old_mcontext;
+	EventTriggerData trigdata;
 	List *runlist;
 	ListCell *lc;
 	bool first = true;
@@ -159,16 +160,22 @@ FireEventTriggers(const char *eventname, const char *tag, int nargs, Datum *args
 	if (runlist == NIL)
 		return;
 
+	/* Set up the event trigger context. */
+	trigdata.type = T_EventTriggerData;
+	trigdata.event = eventname;
+	trigdata.tag = tag;
+	trigdata.parsetree = NULL;
+
 	/*
 	 * Evaluate event triggers in a new memory context, to ensure any
 	 * leaks get cleaned up promptly.
 	 */
-	context = AllocSetContextCreate(CurrentMemoryContext,
-                                    "event trigger context",
-                                    ALLOCSET_DEFAULT_MINSIZE,
-                                    ALLOCSET_DEFAULT_INITSIZE,
-                                    ALLOCSET_DEFAULT_MAXSIZE);
-    oldcontext = MemoryContextSwitchTo(context);
+	mcontext = AllocSetContextCreate(CurrentMemoryContext,
+                                     "event trigger context",
+                                     ALLOCSET_DEFAULT_MINSIZE,
+                                     ALLOCSET_DEFAULT_INITSIZE,
+                                     ALLOCSET_DEFAULT_MAXSIZE);
+    old_mcontext = MemoryContextSwitchTo(mcontext);
 
 	/* Fire each event trigger that matched. */
 	foreach(lc, runlist)
@@ -187,53 +194,20 @@ FireEventTriggers(const char *eventname, const char *tag, int nargs, Datum *args
 		/* Look up the function. */
 		fmgr_info(fnoid, &flinfo);
 
-		if (nargs == 0)
-		{
-			EventTriggerData trigdata;
+		InitFunctionCallInfoData(fcinfo, &flinfo, 0,
+								InvalidOid, (Node *) &trigdata, NULL);
 
-			/*
-			 * Set up a normal event trigger call, passing no arguments but
-			 * setting a context.
-			 */
-			trigdata.type = T_EventTriggerData;
-			trigdata.event = eventname;
-			trigdata.parsetree = NULL;   /* XXX:  can we do this? */
-			trigdata.tag = tag;
-
-			InitFunctionCallInfoData(fcinfo, &flinfo, 0,
-									InvalidOid, (Node *) &trigdata, NULL);
-
-			pgstat_init_function_usage(&fcinfo, &fcusage);
-			FunctionCallInvoke(&fcinfo);
-			pgstat_end_function_usage(&fcusage, true);
-		}
-		else
-		{
-			int i;
-
-			/* Set up a normal function call with arguments. */
-			InitFunctionCallInfoData(fcinfo, &flinfo, nargs,
-									InvalidOid, NULL, NULL);
-
-			Assert(tag == NULL);
-			for (i = 0; i < nargs; i++)
-			{
-				fcinfo.arg[i] = args[i];
-				fcinfo.argnull[i] = false;
-			}
-
-			pgstat_init_function_usage(&fcinfo, &fcusage);
-			FunctionCallInvoke(&fcinfo);
-			pgstat_end_function_usage(&fcusage, true);
-		}
+		pgstat_init_function_usage(&fcinfo, &fcusage);
+		FunctionCallInvoke(&fcinfo);
+		pgstat_end_function_usage(&fcusage, true);
 
 		/* Reclaim memory. */
-		MemoryContextReset(context);
+		MemoryContextReset(mcontext);
 	}
 
 	/* Restore the old memory context and delete the temporary one. */
-	MemoryContextSwitchTo(oldcontext);
-	MemoryContextDelete(context);
+	MemoryContextSwitchTo(old_mcontext);
+	MemoryContextDelete(mcontext);
 
 	/* Cleanup. */
 	list_free(runlist);

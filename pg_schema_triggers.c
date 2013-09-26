@@ -191,18 +191,15 @@ objectaccess_hook(ObjectAccessType access,
  */
 struct event {
 	char *eventname;
-	Oid rettype;
-	int nargs;
-	Oid argtypes[FUNC_MAX_ARGS];
 };
 
 struct event supported_events[] = {
-	{"stmt.listen.before", 	EVTTRIGGEROID,	0, 	{}},
-	{"stmt.listen.after", 	EVTTRIGGEROID,	0, 	{}},
-	{"relation.create", 	VOIDOID,		2,	{REGCLASSOID, NAMEOID}},
+	{"stmt.listen.before"},
+	{"stmt.listen.after"},
+	{"relation.create"},
 
 	/* end of list marker */
-	{NULL, InvalidOid, 0, {}}
+	{NULL}
 };
 
 /*
@@ -230,7 +227,7 @@ stmt_createEventTrigger_before(CreateEventTrigStmt *stmt)
 		 * LookupFuncName() will raise an error if it can't find a
 		 * function with the appropriate signature.
 		 */
-		funcoid = LookupFuncName(stmt->funcname, evt->nargs, evt->argtypes, false);
+		funcoid = LookupFuncName(stmt->funcname, 0, NULL, false);
 		recognized = 1;
 		break;
 	}
@@ -241,11 +238,11 @@ stmt_createEventTrigger_before(CreateEventTrigStmt *stmt)
 	}
 
 	/* Check the trigger function's return type. */
-    if (get_func_rettype(funcoid) != evt->rettype)
+    if (get_func_rettype(funcoid) != EVTTRIGGEROID)
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
                  errmsg("function \"%s\" must return type \"%s\"",
-                        get_func_name(funcoid), format_type_be(evt->rettype))));
+                        get_func_name(funcoid), format_type_be(EVTTRIGGEROID))));
 
 	/* None of our events support the WHEN clause, so ensure that it is empty. */
 	if (stmt->whenclause)
@@ -266,7 +263,7 @@ static int
 stmt_listen_before(ListenStmt *stmt)
 {
 	elog(NOTICE, "stmt_listen_before: channel=\"%s\"", stmt->conditionname);
-	FireEventTriggers("stmt.listen.before", stmt->conditionname, 0, NULL);
+	FireEventTriggers("stmt.listen.before", stmt->conditionname);
 	return 0;
 }
 
@@ -275,7 +272,7 @@ static int
 stmt_listen_after(ListenStmt *stmt)
 {
 	elog(NOTICE, "stmt_listen_after: channel=\"%s\"", stmt->conditionname);
-	FireEventTriggers("stmt.listen.after", stmt->conditionname, 0, NULL);
+	FireEventTriggers("stmt.listen.after", stmt->conditionname);
 	return 1;
 }
 
@@ -285,18 +282,22 @@ object_post_create(ObjectAddress *object)
 {
 	if (object->classId == RelationRelationId)
 	{
+		Oid relnamespace;
 		char *nspname;
-		Datum args[2];
+		char *relname;
+		char *tag;
 
-		/*
-		 * Bump the command counter so that the newly-created relation is
-		 * visible, so that get_object_namespace() will work.
-		 */
+		/* Bump the command counter so we can see the newly-created relation. */
 		CommandCounterIncrement();
-		nspname = get_namespace_name(get_object_namespace(object));
-		args[0] = ObjectIdGetDatum(object->objectId);
-		args[1] = CStringGetDatum(nspname);
-		FireEventTriggers("relation.create", NULL, sizeof(args), args);
+
+		/* Prepare the tag string. */
+		relnamespace = get_object_namespace(object);
+		nspname = get_namespace_name(relnamespace);
+		relname = get_rel_name(object->objectId);
+		tag = quote_qualified_identifier(nspname, relname); 
+
+		/* Fire the trigger. */
+		FireEventTriggers("relation.create", tag);
 	}
 }
 
