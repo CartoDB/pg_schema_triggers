@@ -11,6 +11,8 @@ the old and new names.
 This extension relies on the Event Triggers functionality added in Postgres
 version 9.3;  9.4devel ought to be working as well.
 
+Visit the [Project homepage](http://code.malloclabs.com/pg_schema_triggers).
+
 
 New Events
 ----------
