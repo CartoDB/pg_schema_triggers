@@ -14,8 +14,8 @@ version 9.3;  9.4devel ought to be working as well.
 
 New Events
 ----------
-This extension adds a number of additional events that may be used with the
-CREATE EVENT TRIGGER command.
+This extension adds support for several additional events that may be used with
+the CREATE EVENT TRIGGER command.
 
     Event Name            Description
     --------------------  ----------------------------------------------------
@@ -24,34 +24,33 @@ CREATE EVENT TRIGGER command.
                           trigger raises an exception, the LISTEN will not be
                           permitted.
 
-	relation.create       New relation (table, view, index) has been created;
-	                      filters include "relkind" (t, v, i) and "schema".
-	                      Note that at the point that this event fires, the
-	                      relation DOES NOT YET have any column defaults or
-	                      constraints.  [Corresponds to OAT_CREATE hook.]
+    relation.create       New relation (table, view, or index) created;  note
+                          that at the point that this event fires, the table's
+                          constraints and column defaults have NOT yet been
+                          created.  [This corresponds to the OAT_POST_CREATE
+                          hook.]
 
-	relation.rename
-	relation.drop
+                          Within the event trigger, additional information is
+                          available from the pg_eventinfo_relation_create()
+                          function:
 
-	constraint.add
-	constraint.alter
-	constraint.drop
+                              relation      REGCLASS
+                              relnamespace  OID
 
-    `column_add`          ALTER TABLE ... ADD COLUMN ...
-    `column_alter_type`   ALTER TABLE ... ALTER COLUMN ... SET DATA TYPE ...
-    `column_drop`         ALTER TABLE ... DROP COLUMN ...
-    `column_rename`       ALTER TABLE ... RENAME COLUMN ... TO ...
-    `table_create`        CREATE TABLE ...
-    `table_rename`        ALTER TABLE ... RENAME TO ...
-    `trigger_disable`     ALTER TABLE ... DISABLE TRIGGER ...
-    `trigger_enable`      ALTER TABLE ... ENABLE TRIGGER ...
+The following events are planned, but have not yet been implemented:
 
-Note that there is no `table_drop` event, as this case is already handled by the
-`sql_drop` event.
+    relation.rename       ...
+    relation.drop         ...
+    column.add            ALTER TABLE ... ADD COLUMN ...
+                          (Note that no "column.add" events will be fired for
+                          a new relation being created.)
+    column.alter_type     ALTER TABLE ... ALTER COLUMN ... SET DATA TYPE ...
+    column.drop           ALTER TABLE ... DROP COLUMN ...
+    column.rename         ALTER TABLE ... RENAME COLUMN ... TO ...
 
 
-Example
--------
+Examples
+--------
 This example implements a restriction on the LISTEN command, which prevents
 users from listening on a channel whose name begins with `pg_`.
 
@@ -82,6 +81,33 @@ users from listening on a channel whose name begins with `pg_`.
     ALTER EVENT TRIGGER
     postgres=# LISTEN pg_foo;
     LISTEN
+
+This example issues a NOTICE whenever a table is created with a name that
+begins with `test_`.
+
+    postgres=# CREATE FUNCTION on_relation_create()
+               RETURNS event_trigger
+               LANGUAGE plpgsql
+               AS $$
+                 DECLARE
+                   event_info RECORD;
+                 BEGIN
+                   event_info := pg_eventinfo_relation_create();
+                   IF NOT event_info.relation::text LIKE 'test_%' THEN RETURN; END IF;
+                   RAISE NOTICE 'Relation (%) created in namespace oid:(%).',
+                     event_info.relation,
+                     event_info.relnamespace;
+                 END;
+               $$;
+    CREATE FUNCTION
+    postgres=# CREATE EVENT TRIGGER test_relations ON "relation.create"
+               EXECUTE PROCEDURE on_relation_create();
+    CREATE EVENT TRIGGER
+    postgres=# create table foobar();
+    CREATE TABLE
+    postgres=# create table test_foobar();
+    NOTICE:  Relation (test_foobar) created in namespace oid:(2200).
+    CREATE TABLE
 
 
 Build/install

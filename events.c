@@ -11,7 +11,9 @@
 
 #include "postgres.h"
 #include "fmgr.h"
+#include "funcapi.h"
 #include "access/hash.h"
+#include "access/htup_details.h"
 #include "access/xact.h"
 #include "catalog/objectaccess.h"
 #include "catalog/objectaddress.h"
@@ -32,6 +34,9 @@ typedef struct RelationCreate_EventInfo {
 	Oid relnamespace;
 	Oid relation;
 } RelationCreate_EventInfo;
+
+
+Datum pg_eventinfo_relation_create(PG_FUNCTION_ARGS);
 
 
 int
@@ -73,6 +78,7 @@ relation_created(ObjectAddress *object)
 	CommandCounterIncrement();
 
 	/* Set up the event info. */
+	info.eventname = "relation.create";
 	info.relation = object->objectId;
 	info.relnamespace = get_object_namespace(object);
 
@@ -83,6 +89,35 @@ relation_created(ObjectAddress *object)
 
 	/* Fire the trigger. */
 	FireEventTriggers("relation.create", tag, (EventInfo*)&info);
+}
+
+
+PG_FUNCTION_INFO_V1(pg_eventinfo_relation_create);
+Datum
+pg_eventinfo_relation_create(PG_FUNCTION_ARGS)
+{
+	RelationCreate_EventInfo *info;
+	TupleDesc tupdesc;
+	Datum result[2];
+	bool result_isnull[2];
+	HeapTuple tuple;
+	
+	/* Extract the information from our EventInfo struct. */
+	info = (RelationCreate_EventInfo *)GetCurrentEventInfo("relation.create");
+	result[0] = ObjectIdGetDatum(info->relation);
+	result[1] = ObjectIdGetDatum(info->relnamespace);
+	result_isnull[0] = false;
+	result_isnull[1] = false;
+
+	/* Build our composite result and return it. */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("function returning record called in context "
+				        "that cannot accept type record")));
+	BlessTupleDesc(tupdesc);
+	tuple = heap_form_tuple(tupdesc, result, result_isnull);
+	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
 }
 
 

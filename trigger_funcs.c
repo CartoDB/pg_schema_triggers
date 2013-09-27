@@ -174,9 +174,8 @@ FireEventTriggers(const char *eventname, const char *tag, EventInfo *info)
 		elog(ERROR, "nested event triggers not yet supported.");
 
 	/* Set up the event trigger context. */
-	if (info && strcmp(eventname, info->eventname) != 0)
-		elog(ERROR, "event name must match the EventInfo struct");
-
+	Assert(!info || info->eventname != NULL);
+	Assert(!info || strcmp(eventname, info->eventname) == 0);
 	current_context = palloc(sizeof(EventTriggerContext));
 	current_context->trigdata.type = T_EventTriggerData;
 	current_context->trigdata.event = eventname;
@@ -226,6 +225,7 @@ invoke_event_triggers(List *runlist)
 	 */
 	Assert(current_context != NULL);
 	trigdata = (Node *)&current_context->trigdata;
+	Assert(trigdata->type == T_EventTriggerData);
 
 	/*
 	 * Evaluate event triggers in a new memory context, to ensure any
@@ -256,7 +256,7 @@ invoke_event_triggers(List *runlist)
 		fmgr_info(fnoid, &flinfo);
 
 		InitFunctionCallInfoData(fcinfo, &flinfo, 0,
-								InvalidOid, (Node *) &trigdata, NULL);
+								InvalidOid, (Node *)trigdata, NULL);
 
 		pgstat_init_function_usage(&fcinfo, &fcusage);
 		FunctionCallInvoke(&fcinfo);
