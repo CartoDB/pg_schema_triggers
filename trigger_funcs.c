@@ -6,7 +6,7 @@
  * (The exported functions dealing with event triggers are too high-level for
  * our needs.  It's a shame we have to duplicate code...)
  *
- * pg_schema_triggers/event_trigger.c
+ * pg_schema_triggers/trigger_funcs.c
  */
 
 
@@ -35,7 +35,8 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 
-#include "pg_schema_triggers.h"
+
+#include "trigger_funcs.h"
 
 
 List * find_event_triggers_for_event(const char *eventname);

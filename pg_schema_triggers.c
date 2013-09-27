@@ -20,7 +20,8 @@
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
 
-#include "pg_schema_triggers.h"
+#include "events.h"
+#include "trigger_funcs.h"
 
 
 /* PG_MODULE_MAGIC must appear exactly once in the entire module. */
@@ -31,6 +32,7 @@ void _PG_fini(void);
 
 static ProcessUtility_hook_type old_utility_hook = NULL;
 static object_access_hook_type old_objectaccess_hook = NULL;
+static int stmt_createEventTrigger_before(CreateEventTrigStmt *stmt);
 
 static void objectaccess_hook(ObjectAccessType access,
 	Oid classId,
@@ -43,13 +45,6 @@ static void utility_hook(Node *parsetree,
 	ParamListInfo params,
 	DestReceiver *dest,
 	char *completionTag);
-
-static void object_post_create(ObjectAddress *object);
-static void object_post_alter(ObjectAddress *object, Oid auxObjId);
-static void object_drop(ObjectAddress *object, int dropflags);
-static int stmt_createEventTrigger_before(CreateEventTrigStmt *stmt);
-static int stmt_listen_before(ListenStmt *stmt);
-static int stmt_listen_after(ListenStmt *stmt);
 
 
 /*
@@ -256,60 +251,4 @@ stmt_createEventTrigger_before(CreateEventTrigStmt *stmt)
 
 	/* And skip the call to CreateEventTrigger(). */
 	return 1;
-}
-
-
-static int
-stmt_listen_before(ListenStmt *stmt)
-{
-	elog(NOTICE, "stmt_listen_before: channel=\"%s\"", stmt->conditionname);
-	FireEventTriggers("stmt.listen.before", stmt->conditionname);
-	return 0;
-}
-
-
-static int
-stmt_listen_after(ListenStmt *stmt)
-{
-	elog(NOTICE, "stmt_listen_after: channel=\"%s\"", stmt->conditionname);
-	FireEventTriggers("stmt.listen.after", stmt->conditionname);
-	return 1;
-}
-
-
-static void
-object_post_create(ObjectAddress *object)
-{
-	if (object->classId == RelationRelationId)
-	{
-		Oid relnamespace;
-		char *nspname;
-		char *relname;
-		char *tag;
-
-		/* Bump the command counter so we can see the newly-created relation. */
-		CommandCounterIncrement();
-
-		/* Prepare the tag string. */
-		relnamespace = get_object_namespace(object);
-		nspname = get_namespace_name(relnamespace);
-		relname = get_rel_name(object->objectId);
-		tag = quote_qualified_identifier(nspname, relname); 
-
-		/* Fire the trigger. */
-		FireEventTriggers("relation.create", tag);
-	}
-}
-
-static void
-object_post_alter(ObjectAddress *object, Oid auxObjId)
-{
-	return;
-}
-
-
-static void
-object_drop(ObjectAddress *object, int dropflags)
-{
-	return;
 }
