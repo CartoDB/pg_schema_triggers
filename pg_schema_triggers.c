@@ -153,8 +153,18 @@ objectaccess_hook(ObjectAccessType access,
 			{
 				ObjectAccessPostCreate *args = (ObjectAccessPostCreate *)arg;
 
-				if (!args->is_internal)
-					object_post_create(&object);
+				if (args->is_internal)
+					return;
+
+				switch (classId)
+				{
+					case RelationRelationId:
+						relation_created(&object);
+						break;
+					default:
+						object_post_create(&object);
+						break;
+				}
 			}
 			break;
 		case OAT_POST_ALTER:

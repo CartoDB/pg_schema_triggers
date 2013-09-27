@@ -39,6 +39,16 @@
 #include "trigger_funcs.h"
 
 
+/* Holds the current event info. */
+typedef struct EventTriggerContext {
+	EventTriggerData trigdata;
+	EventInfo *info;
+} EventTriggerContext;
+
+EventTriggerContext *current_context = NULL;
+
+
+static void invoke_event_triggers(List *runlist);
 List * find_event_triggers_for_event(const char *eventname);
 
 
@@ -138,16 +148,14 @@ CreateEventTriggerEx(const char *eventname, const char *trigname, Oid trigfunc)
  * and utils/cache/evtcache.c, as there is no clean API for invoking an
  * arbitrary event trigger by name.  (The existing code uses an enum, not
  * a string, for invoking event triggers.)
+ *
+ * The 'info' pointer may be retrieved by calling GetCurrentEventInfo(), but
+ * only during execution of an event trigger.
  */
 void
-FireEventTriggers(const char *eventname, const char *tag)
+FireEventTriggers(const char *eventname, const char *tag, EventInfo *info)
 {
-	MemoryContext mcontext;
-	MemoryContext old_mcontext;
-	EventTriggerData trigdata;
 	List *runlist;
-	ListCell *lc;
-	bool first = true;
 
 	/* Event triggers are completely disabled in standalone mode. */
 	if (!IsUnderPostmaster)
@@ -161,11 +169,63 @@ FireEventTriggers(const char *eventname, const char *tag)
 	if (runlist == NIL)
 		return;
 
+	/* FIXME:  event triggers can't fire other events */
+	if (current_context != NULL)
+		elog(ERROR, "nested event triggers not yet supported.");
+
 	/* Set up the event trigger context. */
-	trigdata.type = T_EventTriggerData;
-	trigdata.event = eventname;
-	trigdata.tag = tag;
-	trigdata.parsetree = NULL;
+	if (info && strcmp(eventname, info->eventname) != 0)
+		elog(ERROR, "event name must match the EventInfo struct");
+
+	current_context = palloc(sizeof(EventTriggerContext));
+	current_context->trigdata.type = T_EventTriggerData;
+	current_context->trigdata.event = eventname;
+	current_context->trigdata.tag = tag;
+	current_context->trigdata.parsetree = NULL;
+	current_context->info = info;
+
+	/*
+	 * Fire the event triggers inside a PG_TRY() block to ensure that we
+	 * clean up current_event_info, even in the event of an exception.
+	 */
+	PG_TRY();
+	{
+		invoke_event_triggers(runlist);
+	}
+	PG_CATCH();
+	{
+		current_context = NULL;
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	/* Cleanup. */
+	list_free(runlist);
+	pfree(current_context);
+	current_context = NULL;
+
+	/*
+	 * Make sure anything the event triggers did will be visible to the main
+	 * command.
+	 */
+	CommandCounterIncrement();
+}
+
+
+static void
+invoke_event_triggers(List *runlist)
+{
+	MemoryContext mcontext;
+	MemoryContext old_mcontext;
+	ListCell *lc;
+	Node *trigdata;
+	bool first = true;
+
+	/*
+	 * Ensure we're actually inside an event trigger!
+	 */
+	Assert(current_context != NULL);
+	trigdata = (Node *)&current_context->trigdata;
 
 	/*
 	 * Evaluate event triggers in a new memory context, to ensure any
@@ -209,18 +269,31 @@ FireEventTriggers(const char *eventname, const char *tag)
 	/* Restore the old memory context and delete the temporary one. */
 	MemoryContextSwitchTo(old_mcontext);
 	MemoryContextDelete(mcontext);
-
-	/* Cleanup. */
-	list_free(runlist);
-
-	/*
-	 * Make sure anything the event triggers did will be visible to the main
-	 * command.
-	 */
-	CommandCounterIncrement();
 }
 
 
+/*
+ * Retrieve the EventInfo that was passed to FireEventTriggers().  Only valid
+ * during execution of an event trigger.
+ */
+EventInfo *
+GetCurrentEventInfo(const char *eventname)
+{
+	if (!current_context)
+		elog(ERROR, "may only be called from an event trigger.");
+	
+	if (!current_context->info)
+		elog(ERROR, "the \"%s\" event has no associated EventInfo.",
+					current_context->trigdata.event);
+
+	if (strcmp(eventname, current_context->info->eventname) != 0)
+		elog(ERROR, "cannot be called during the \"%s\" event.",
+					current_context->info->eventname);
+
+	return current_context->info;
+}
+
+ 
 /*
  * Scan (yes, seqscan) through pg_event_triggers to find any enabled event
  * triggers for the given event name, and return a List of function Oids to

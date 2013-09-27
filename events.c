@@ -27,11 +27,18 @@
 #include "trigger_funcs.h"
 
 
+typedef struct RelationCreate_EventInfo {
+	char *eventname;
+	Oid relnamespace;
+	Oid relation;
+} RelationCreate_EventInfo;
+
+
 int
 stmt_listen_before(ListenStmt *stmt)
 {
 	elog(NOTICE, "stmt_listen_before: channel=\"%s\"", stmt->conditionname);
-	FireEventTriggers("stmt.listen.before", stmt->conditionname);
+	FireEventTriggers("stmt.listen.before", stmt->conditionname, NULL);
 	return 0;
 }
 
@@ -40,7 +47,7 @@ int
 stmt_listen_after(ListenStmt *stmt)
 {
 	elog(NOTICE, "stmt_listen_after: channel=\"%s\"", stmt->conditionname);
-	FireEventTriggers("stmt.listen.after", stmt->conditionname);
+	FireEventTriggers("stmt.listen.after", stmt->conditionname, NULL);
 	return 1;
 }
 
@@ -48,25 +55,34 @@ stmt_listen_after(ListenStmt *stmt)
 void
 object_post_create(ObjectAddress *object)
 {
-	if (object->classId == RelationRelationId)
-	{
-		Oid relnamespace;
-		char *nspname;
-		char *relname;
-		char *tag;
+	return;
+}
 
-		/* Bump the command counter so we can see the newly-created relation. */
-		CommandCounterIncrement();
 
-		/* Prepare the tag string. */
-		relnamespace = get_object_namespace(object);
-		nspname = get_namespace_name(relnamespace);
-		relname = get_rel_name(object->objectId);
-		tag = quote_qualified_identifier(nspname, relname); 
+void
+relation_created(ObjectAddress *object)
+{
+	RelationCreate_EventInfo info;
+	char *nspname;
+	char *relname;
+	char *tag;
 
-		/* Fire the trigger. */
-		FireEventTriggers("relation.create", tag);
-	}
+	Assert(object->classId == RelationRelationId);
+
+	/* Bump the command counter so we can see the newly-created relation. */
+	CommandCounterIncrement();
+
+	/* Set up the event info. */
+	info.relation = object->objectId;
+	info.relnamespace = get_object_namespace(object);
+
+	/* Prepare the tag string. */
+	nspname = get_namespace_name(info.relnamespace);
+	relname = get_rel_name(object->objectId);
+	tag = quote_qualified_identifier(nspname, relname); 
+
+	/* Fire the trigger. */
+	FireEventTriggers("relation.create", tag, (EventInfo*)&info);
 }
 
 

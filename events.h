@@ -20,6 +20,7 @@ int stmt_listen_after(ListenStmt *stmt);
 void object_post_create(ObjectAddress *object);
 void object_post_alter(ObjectAddress *object, Oid auxObjId);
 void object_drop(ObjectAddress *object, int dropflags);
+void relation_created(ObjectAddress *object);
 
 
 #endif	/* SCHEMA_TRIGGERS_EVENTS_H */
