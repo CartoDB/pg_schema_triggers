@@ -29,43 +29,29 @@
 #include "trigger_funcs.h"
 
 
+/*** Event:  "listen" ***/
+
+
+void
+listen_event(const char *condition_name)
+{
+	FireEventTriggers("listen", condition_name, NULL);
+}
+
+
+/*** Event:  "relation.create" ***/
+
+
 typedef struct RelationCreate_EventInfo {
 	char *eventname;
 	Oid relnamespace;
 	Oid relation;
+	char relkind;
 } RelationCreate_EventInfo;
 
 
-Datum pg_eventinfo_relation_create(PG_FUNCTION_ARGS);
-
-
-int
-stmt_listen_before(ListenStmt *stmt)
-{
-	elog(NOTICE, "stmt_listen_before: channel=\"%s\"", stmt->conditionname);
-	FireEventTriggers("stmt.listen.before", stmt->conditionname, NULL);
-	return 0;
-}
-
-
-int
-stmt_listen_after(ListenStmt *stmt)
-{
-	elog(NOTICE, "stmt_listen_after: channel=\"%s\"", stmt->conditionname);
-	FireEventTriggers("stmt.listen.after", stmt->conditionname, NULL);
-	return 1;
-}
-
-
 void
-object_post_create(ObjectAddress *object)
-{
-	return;
-}
-
-
-void
-relation_created(ObjectAddress *object)
+relation_create_event(ObjectAddress *object)
 {
 	RelationCreate_EventInfo info;
 	char *nspname;
@@ -81,6 +67,7 @@ relation_created(ObjectAddress *object)
 	info.eventname = "relation.create";
 	info.relation = object->objectId;
 	info.relnamespace = get_object_namespace(object);
+	info.relkind = get_rel_relkind(info.relation);
 
 	/* Prepare the tag string. */
 	nspname = get_namespace_name(info.relnamespace);
@@ -92,9 +79,9 @@ relation_created(ObjectAddress *object)
 }
 
 
-PG_FUNCTION_INFO_V1(pg_eventinfo_relation_create);
+PG_FUNCTION_INFO_V1(relation_create_getinfo);
 Datum
-pg_eventinfo_relation_create(PG_FUNCTION_ARGS)
+relation_create_getinfo(PG_FUNCTION_ARGS)
 {
 	RelationCreate_EventInfo *info;
 	TupleDesc tupdesc;
@@ -106,8 +93,10 @@ pg_eventinfo_relation_create(PG_FUNCTION_ARGS)
 	info = (RelationCreate_EventInfo *)GetCurrentEventInfo("relation.create");
 	result[0] = ObjectIdGetDatum(info->relation);
 	result[1] = ObjectIdGetDatum(info->relnamespace);
+	result[2] = CharGetDatum(info->relkind);
 	result_isnull[0] = false;
 	result_isnull[1] = false;
+	result_isnull[2] = false;
 
 	/* Build our composite result and return it. */
 	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
@@ -118,18 +107,4 @@ pg_eventinfo_relation_create(PG_FUNCTION_ARGS)
 	BlessTupleDesc(tupdesc);
 	tuple = heap_form_tuple(tupdesc, result, result_isnull);
 	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
-}
-
-
-void
-object_post_alter(ObjectAddress *object, Oid auxObjId)
-{
-	return;
-}
-
-
-void
-object_drop(ObjectAddress *object, int dropflags)
-{
-	return;
 }

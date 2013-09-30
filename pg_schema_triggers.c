@@ -101,9 +101,6 @@ utility_hook(Node *parsetree,
 		case T_CreateEventTrigStmt:
 			suppress = stmt_createEventTrigger_before((CreateEventTrigStmt *) parsetree);
 			break;
-		case T_ListenStmt:
-			suppress = stmt_listen_before((ListenStmt *) parsetree);
-			break;
 		default:
 			suppress = 0;
 			break;
@@ -118,7 +115,11 @@ utility_hook(Node *parsetree,
 	switch (nodeTag(parsetree))
 	{
 		case T_ListenStmt:
-			stmt_listen_after((ListenStmt *) parsetree);
+			{
+				ListenStmt *stmt = (ListenStmt *) parsetree;
+
+				listen_event(stmt->conditionname);
+			}
 			break;
 		default:
 			break;
@@ -159,27 +160,24 @@ objectaccess_hook(ObjectAccessType access,
 				switch (classId)
 				{
 					case RelationRelationId:
-						relation_created(&object);
-						break;
-					default:
-						object_post_create(&object);
+						relation_create_event(&object);
 						break;
 				}
 			}
 			break;
 		case OAT_POST_ALTER:
 			{
-				ObjectAccessPostAlter *args = (ObjectAccessPostAlter *)arg;
-
-				if (!args->is_internal)
-					object_post_alter(&object, args->auxiliary_id);
+				//ObjectAccessPostAlter *args = (ObjectAccessPostAlter *)arg;
+				//
+				//if (!args->is_internal)
+				//	object_post_alter(&object, args->auxiliary_id);
 			}
 			break;
 		case OAT_DROP:
 			{
-				ObjectAccessDrop *args = (ObjectAccessDrop *)arg;
-
-				object_drop(&object, args->dropflags);
+				//ObjectAccessDrop *args = (ObjectAccessDrop *)arg;
+				//
+				//object_drop(&object, args->dropflags);
 			}
 			break;
 		case OAT_NAMESPACE_SEARCH:

@@ -3,3 +3,4 @@ comment = 'Extends CREATE EVENT TRIGGER with additional schema events.'
 module_pathname = '$libdir/pg_schema_triggers.so'
 superuser = true
 relocatable = false
+schema = schema_triggers

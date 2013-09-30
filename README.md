@@ -21,10 +21,8 @@ the CREATE EVENT TRIGGER command.
 
     Event Name            Description
     --------------------  ----------------------------------------------------
-    stmt.listen.before    Immediately before/after executing LISTEN ...;  the
-    stmt.listen.after     TG_TAG variable is the channel name.  If the .before
-                          trigger raises an exception, the LISTEN will not be
-                          permitted.
+    listen                Immediately after executing LISTEN ...;  the TG_TAG
+                          variable is the channel name.
 
     relation.create       New relation (table, view, or index) created;  note
                           that at the point that this event fires, the table's
@@ -32,12 +30,13 @@ the CREATE EVENT TRIGGER command.
                           created.  [This corresponds to the OAT_POST_CREATE
                           hook.]
 
-                          Within the event trigger, additional information is
-                          available from the pg_eventinfo_relation_create()
-                          function:
+                          In the event trigger, the get_relation_create_info()
+                          function will return a RELATION_CREATE_INFO record: 
 
                               relation      REGCLASS
                               relnamespace  OID
+                              relkind		CHAR		['r' for regular table]
+
 
 The following events are planned, but have not yet been implemented:
 
