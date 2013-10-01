@@ -91,13 +91,16 @@ begins with `test_`.
                LANGUAGE plpgsql
                AS $$
                  DECLARE
-                   event_info RECORD;
+                   event_info schema_triggers.RELATION_CREATE_INFO;
                  BEGIN
-                   event_info := pg_eventinfo_relation_create();
+                   RAISE NOTICE 'on_relation_create2()';
+                   event_info := schema_triggers.get_relation_create_info();
                    IF NOT event_info.relation::text LIKE 'test_%' THEN RETURN; END IF;
-                   RAISE NOTICE 'Relation (%) created in namespace oid:(%).',
+                   RAISE NOTICE 'Relation (%) created in namespace (oid=%).',
                      event_info.relation,
                      event_info.relnamespace;
+                   RAISE NOTICE 'new pg_class row: %', (SELECT (pg_class.*)::text FROM pg_catalog.pg_class
+                                                        WHERE oid = event_info.relation);
                  END;
                $$;
     CREATE FUNCTION
@@ -108,6 +111,7 @@ begins with `test_`.
     CREATE TABLE
     postgres=# create table test_foobar();
     NOTICE:  Relation (test_foobar) created in namespace oid:(2200).
+    NOTICE:  new pg_class row: (test_foobar,2200,49224,0,10,0,49222,0,0,0,0,0,0,f,f,p,r,0,0,f,f,f,f,f,t,924,1,,)
     CREATE TABLE
 
 
