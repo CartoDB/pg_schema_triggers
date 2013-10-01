@@ -51,7 +51,7 @@ typedef struct RelationCreate_EventInfo {
 
 
 void
-relation_create_event(ObjectAddress *object)
+relation_create_event(ObjectAddress *rel)
 {
 	RelationCreate_EventInfo info;
 	char *nspname;
@@ -65,13 +65,13 @@ relation_create_event(ObjectAddress *object)
 
 	/* Set up the event info. */
 	info.eventname = "relation.create";
-	info.relation = object->objectId;
-	info.relnamespace = get_object_namespace(object);
+	info.relation = rel->objectId;
+	info.relnamespace = get_object_namespace(rel);
 	info.relkind = get_rel_relkind(info.relation);
 
 	/* Prepare the tag string. */
 	nspname = get_namespace_name(info.relnamespace);
-	relname = get_rel_name(object->objectId);
+	relname = get_rel_name(rel->objectId);
 	tag = quote_qualified_identifier(nspname, relname); 
 
 	/* Fire the trigger. */
@@ -79,9 +79,9 @@ relation_create_event(ObjectAddress *object)
 }
 
 
-PG_FUNCTION_INFO_V1(relation_create_getinfo);
+PG_FUNCTION_INFO_V1(relation_create_eventinfo);
 Datum
-relation_create_getinfo(PG_FUNCTION_ARGS)
+relation_create_eventinfo(PG_FUNCTION_ARGS)
 {
 	RelationCreate_EventInfo *info;
 	TupleDesc tupdesc;
@@ -107,4 +107,46 @@ relation_create_getinfo(PG_FUNCTION_ARGS)
 	BlessTupleDesc(tupdesc);
 	tuple = heap_form_tuple(tupdesc, result, result_isnull);
 	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
+}
+
+
+/*** Event:  "relation.alter" ***/
+
+
+typedef struct RelationAlter_EventInfo {
+	char *eventname;
+	Oid relation;
+	FormData_pg_class old;
+	FormData_pg_class new;
+} RelationAlter_EventInfo;
+
+
+void
+relation_alter_event(ObjectAddress *rel)
+{
+	RelationAlter_EventInfo info;
+	char *nspname;
+	char *relname;
+	char *tag;
+
+	Assert(object->classId == RelationRelationId);
+
+	/* Set up the event info. */
+	info.eventname = "relation.alter";
+	info.relation = rel->objectId;
+	info.old = 
+
+	/* Bump the command counter so we can see the changes to the relation. */
+	CommandCounterIncrement();
+
+	/* Prepare the tag string. */
+	nspname = get_namespace_name(info.relnamespace);
+	relname = get_rel_name(rel->objectId);
+	tag = quote_qualified_identifier(nspname, relname); 
+
+	/* Fire the trigger. */
+	FireEventTriggers("relation.create", tag, (EventInfo*)&info);
+
+
+
 }

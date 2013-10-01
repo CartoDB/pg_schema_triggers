@@ -18,8 +18,14 @@
 
 void listen_event(const char *condition_name);
 
-void relation_create_event(ObjectAddress *object);
-Datum relation_create_getinfo(PG_FUNCTION_ARGS);
+void relation_create_event(ObjectAddress *rel);
+Datum relation_create_eventinfo(PG_FUNCTION_ARGS);
+
+void relation_alter_event(ObjectAddress *rel);
+Datum relation_alter_eventinfo(PG_FUNCTION_ARGS);
+
+void relation_drop_event(ObjectAddress *rel);
+Datum relation_drop_eventinfo(PG_FUNCTION_ARGS);
 
 
 #endif	/* SCHEMA_TRIGGERS_EVENTS_H */
