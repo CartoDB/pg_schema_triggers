@@ -180,11 +180,11 @@ objectaccess_hook(ObjectAccessType access,
 				if (args->is_internal)
 					return;
 
-				if (classId == RelationRelationId && attnum == 0)
+				if (classId == RelationRelationId && subId == 0)
 				{
 					relation_alter_event(&object);
 				}
-				else if (classId == RelationRelationId && attnum != 0)
+				else if (classId == RelationRelationId && subId != 0)
 				{
 					//column_alter_event(&object, attnum);
 				}
@@ -217,6 +217,7 @@ struct event supported_events[] = {
 	{"stmt.listen.before"},
 	{"stmt.listen.after"},
 	{"relation.create"},
+	{"relation.alter"},
 
 	/* end of list marker */
 	{NULL}
