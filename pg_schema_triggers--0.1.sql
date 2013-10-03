@@ -6,7 +6,7 @@
 CREATE TYPE relation_create_eventinfo AS (
 	relation        REGCLASS,
 	relnamespace    OID,
-	relkind         CHAR			-- same as the "pg_class.relkind" column
+	new				PG_CATALOG.PG_CLASS
 );
 CREATE FUNCTION get_relation_create_eventinfo()
 	RETURNS relation_create_eventinfo

@@ -24,6 +24,7 @@ the CREATE EVENT TRIGGER command.
     listen                Immediately after executing LISTEN ...;  the TG_TAG
                           variable is the channel name.
 
+
     relation.create       New relation (table, view, or index) created;  note
                           that at the point that this event fires, the table's
                           constraints and column defaults have NOT yet been
@@ -36,7 +37,8 @@ the CREATE EVENT TRIGGER command.
 
                               relation      REGCLASS
                               relnamespace  OID
-                              relkind		CHAR		['r' for regular table]
+                              new			PG_CATALOG.PG_CLASS
+
 
     relation.alter        An existing relation has been altered.  [This event
     					  corresponds to the OAT_POST_ALTER hook.]
@@ -110,8 +112,7 @@ begins with `test_`.
                    RAISE NOTICE 'Relation (%) created in namespace (oid=%).',
                      event_info.relation,
                      event_info.relnamespace;
-                   RAISE NOTICE 'new pg_class row: %', (SELECT (pg_class.*)::text FROM pg_catalog.pg_class
-                                                        WHERE oid = event_info.relation);
+                   RAISE NOTICE 'new pg_class row: %', event_info.new;
                  END;
                $$;
     CREATE FUNCTION

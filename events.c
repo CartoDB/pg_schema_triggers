@@ -48,9 +48,9 @@ listen_event(const char *condition_name)
 
 typedef struct RelationCreate_EventInfo {
 	char *eventname;
-	Oid relnamespace;
 	Oid relation;
-	char relkind;
+	Oid relnamespace;
+	HeapTuple new;
 } RelationCreate_EventInfo;
 
 
@@ -64,14 +64,13 @@ relation_create_event(ObjectAddress *rel)
 
 	Assert(rel->classId == RelationRelationId);
 
-	/* Bump the command counter so we can see the newly-created relation. */
-	CommandCounterIncrement();
-
 	/* Set up the event info. */
 	info.eventname = "relation.create";
 	info.relation = rel->objectId;
 	info.relnamespace = get_object_namespace(rel);
-	info.relkind = get_rel_relkind(info.relation);
+	info.new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf);
+	if (!HeapTupleIsValid(info.new))
+		elog(ERROR, "couldn't find new pg_class row for oid=(%u)", rel->objectId);
 
 	/* Prepare the tag string. */
 	nspname = get_namespace_name(info.relnamespace);
@@ -80,6 +79,9 @@ relation_create_event(ObjectAddress *rel)
 
 	/* Fire the trigger. */
 	FireEventTriggers("relation.create", tag, (EventInfo*)&info);
+
+	/* Free the new HeapTuple. */
+	heap_freetuple(info.new);
 }
 
 
@@ -93,22 +95,24 @@ relation_create_eventinfo(PG_FUNCTION_ARGS)
 	bool result_isnull[3];
 	HeapTuple tuple;
 	
-	/* Extract the information from our EventInfo struct. */
-	info = (RelationCreate_EventInfo *)GetCurrentEventInfo("relation.create");
-	result[0] = ObjectIdGetDatum(info->relation);
-	result[1] = ObjectIdGetDatum(info->relnamespace);
-	result[2] = CharGetDatum(info->relkind);
-	result_isnull[0] = false;
-	result_isnull[1] = false;
-	result_isnull[2] = false;
-
-	/* Build our composite result and return it. */
+	/* Get the tupdesc for our return type. */
 	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("function returning record called in context "
 				        "that cannot accept type record")));
 	BlessTupleDesc(tupdesc);
+
+	/* Get our EventInfo struct. */
+	info = (RelationCreate_EventInfo *)GetCurrentEventInfo("relation.create");
+
+	/* Form and return the tuple. */
+	result[0] = ObjectIdGetDatum(info->relation);
+	result[1] = ObjectIdGetDatum(info->relnamespace);
+	result[2] = HeapTupleGetDatum(info->new);
+	result_isnull[0] = false;
+	result_isnull[1] = false;
+	result_isnull[2] = false;
 	tuple = heap_form_tuple(tupdesc, result, result_isnull);
 	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
 }
@@ -167,8 +171,8 @@ relation_alter_eventinfo(PG_FUNCTION_ARGS)
 {
 	RelationAlter_EventInfo *info;
 	TupleDesc tupdesc;
-	Datum result[3];
-	bool result_isnull[3];
+	Datum result[4];
+	bool result_isnull[4];
 	HeapTuple tuple;
 	
 	/* Get the tupdesc for our return type. */
@@ -184,11 +188,13 @@ relation_alter_eventinfo(PG_FUNCTION_ARGS)
 
 	/* Form and return the tuple. */
 	result[0] = ObjectIdGetDatum(info->relation);
-	result[1] = HeapTupleGetDatum(info->old);
-	result[2] = HeapTupleGetDatum(info->new);
+	result[1] = ObjectIdGetDatum(info->relnamespace);
+	result[2] = HeapTupleGetDatum(info->old);
+	result[3] = HeapTupleGetDatum(info->new);
 	result_isnull[0] = false;
 	result_isnull[1] = false;
 	result_isnull[2] = false;
+	result_isnull[3] = false;
 	tuple = heap_form_tuple(tupdesc, result, result_isnull);
 	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
 }
