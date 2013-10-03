@@ -165,12 +165,29 @@ objectaccess_hook(ObjectAccessType access,
 				}
 			}
 			break;
+
+		/*
+		 * The OAT_POST_ALTER hook is called from the following functions:
+		 *
+		 *	 [func]						[class]				[obj]			[subobj]
+		 *   renameatt_internal			RelationRelationId	pg_class.oid	attnum
+		 *   RenameRelationInternal		RelationRelationId	pg_class.oid	0
+		 */
 		case OAT_POST_ALTER:
 			{
-				//ObjectAccessPostAlter *args = (ObjectAccessPostAlter *)arg;
-				//
-				//if (!args->is_internal)
-				//	object_post_alter(&object, args->auxiliary_id);
+				ObjectAccessPostAlter *args = (ObjectAccessPostAlter *)arg;
+				
+				if (args->is_internal)
+					return;
+
+				if (classId == RelationRelationId && attnum == 0)
+				{
+					relation_alter_event(&object);
+				}
+				else if (classId == RelationRelationId && attnum != 0)
+				{
+					//column_alter_event(&object, attnum);
+				}
 			}
 			break;
 		case OAT_DROP:

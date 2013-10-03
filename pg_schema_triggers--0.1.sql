@@ -3,12 +3,24 @@
 
 
 -- Info for "relation.create" event.
-CREATE TYPE relation_create_info AS (
+CREATE TYPE relation_create_eventinfo AS (
 	relation        REGCLASS,
 	relnamespace    OID,
 	relkind         CHAR			-- same as the "pg_class.relkind" column
 );
-CREATE FUNCTION get_relation_create_info()
+CREATE FUNCTION get_relation_create_eventinfo()
 	RETURNS relation_create_info
 	LANGUAGE C
-	AS 'pg_schema_triggers', 'relation_create_getinfo';
+	AS 'pg_schema_triggers', 'relation_create_eventinfo';
+
+
+-- Info for "relation.alter" event.
+CREATE TYPE relation_alter_eventinfo AS (
+	relation		REGCLASS,
+	old				PG_CATALOG.PG_CLASS,
+	new				PG_CATALOG.PG_CLASS
+);
+CREATE FUNCTION get_relation_alter_eventinfo()
+	RETURNS relation_alter_info
+	LANGUAGE C
+	AS 'pg_schema_triggers', 'relation_alter_eventinfo';
