@@ -9,7 +9,7 @@ CREATE TYPE relation_create_eventinfo AS (
 	relkind         CHAR			-- same as the "pg_class.relkind" column
 );
 CREATE FUNCTION get_relation_create_eventinfo()
-	RETURNS relation_create_info
+	RETURNS relation_create_eventinfo
 	LANGUAGE C
 	AS 'pg_schema_triggers', 'relation_create_eventinfo';
 
@@ -21,6 +21,6 @@ CREATE TYPE relation_alter_eventinfo AS (
 	new				PG_CATALOG.PG_CLASS
 );
 CREATE FUNCTION get_relation_alter_eventinfo()
-	RETURNS relation_alter_info
+	RETURNS relation_alter_eventinfo
 	LANGUAGE C
 	AS 'pg_schema_triggers', 'relation_alter_eventinfo';
