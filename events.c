@@ -85,8 +85,8 @@ relation_create_getinfo(PG_FUNCTION_ARGS)
 {
 	RelationCreate_EventInfo *info;
 	TupleDesc tupdesc;
-	Datum result[2];
-	bool result_isnull[2];
+	Datum result[3];
+	bool result_isnull[3];
 	HeapTuple tuple;
 	
 	/* Extract the information from our EventInfo struct. */
