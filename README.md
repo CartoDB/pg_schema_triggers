@@ -30,17 +30,28 @@ the CREATE EVENT TRIGGER command.
                           created.  [This corresponds to the OAT_POST_CREATE
                           hook.]
 
-                          In the event trigger, the get_relation_create_info()
-                          function will return a RELATION_CREATE_INFO record: 
+                          From the event trigger function, calling the
+                          get_relation_create_eventinfo() function will return
+                          a RELATION_CREATE_EVENTINFO record: 
 
                               relation      REGCLASS
                               relnamespace  OID
                               relkind		CHAR		['r' for regular table]
 
+    relation.alter        An existing relation has been altered.  [This event
+    					  corresponds to the OAT_POST_ALTER hook.]
+
+                          From the event trigger function, calling the
+                          get_relation_alter_eventinfo() function will return
+                          a RELATION_ALTER_EVENTINFO record: 
+
+                              relation      REGCLASS
+                              old			PG_CATALOG.PG_CLASS
+                              new			PG_CATALOG.PG_CLASS
+
 
 The following events are planned, but have not yet been implemented:
 
-    relation.rename       ...
     relation.drop         ...
     column.add            ALTER TABLE ... ADD COLUMN ...
                           (Note that no "column.add" events will be fired for
@@ -91,10 +102,10 @@ begins with `test_`.
                LANGUAGE plpgsql
                AS $$
                  DECLARE
-                   event_info schema_triggers.RELATION_CREATE_INFO;
+                   event_info schema_triggers.RELATION_CREATE_EVENTINFO;
                  BEGIN
-                   RAISE NOTICE 'on_relation_create2()';
-                   event_info := schema_triggers.get_relation_create_info();
+                   RAISE NOTICE 'on_relation_create()';
+                   event_info := schema_triggers.get_relation_create_eventinfo();
                    IF NOT event_info.relation::text LIKE 'test_%' THEN RETURN; END IF;
                    RAISE NOTICE 'Relation (%) created in namespace (oid=%).',
                      event_info.relation,
