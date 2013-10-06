@@ -16,8 +16,6 @@
 #include "fmgr.h"
 
 
-void listen_event(const char *condition_name);
-
 void relation_create_event(ObjectAddress *rel);
 Datum relation_create_eventinfo(PG_FUNCTION_ARGS);
 

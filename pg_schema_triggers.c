@@ -93,37 +93,19 @@ utility_hook(Node *parsetree,
 	DestReceiver *dest,
 	char *completionTag)
 {
-	int suppress;
-
-	/* Call the *_before() function, if any. */
-	switch (nodeTag(parsetree))
+	/* Intercept the CREATE EVENT TRIGGER command. */
+	if (nodeTag(parsetree) == T_CreateEventTrigStmt)
 	{
-		case T_CreateEventTrigStmt:
-			suppress = stmt_createEventTrigger_before((CreateEventTrigStmt *) parsetree);
-			break;
-		default:
-			suppress = 0;
-			break;
+		CreateEventTrigStmt *stmt = (CreateEventTrigStmt *) parsetree;
+		int suppress;
+
+		suppress = stmt_createEventTrigger_before(stmt);
+		if (suppress)
+			return;
 	}
 
-	/* Did the before() function handle the command itself? */
-	if (suppress)
-		return;
+	/* Pass all other commands through to the default implementation. */
 	standard_ProcessUtility(parsetree, queryString, context, params, dest, completionTag);
-
-	/* Call the *_after() function, if any. */
-	switch (nodeTag(parsetree))
-	{
-		case T_ListenStmt:
-			{
-				ListenStmt *stmt = (ListenStmt *) parsetree;
-
-				listen_event(stmt->conditionname);
-			}
-			break;
-		default:
-			break;
-	}
 }
 
 
@@ -214,8 +196,6 @@ struct event {
 };
 
 struct event supported_events[] = {
-	{"stmt.listen.before"},
-	{"stmt.listen.after"},
 	{"relation.create"},
 	{"relation.alter"},
 

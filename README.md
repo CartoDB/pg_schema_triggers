@@ -21,10 +21,6 @@ the CREATE EVENT TRIGGER command.
 
     Event Name            Description
     --------------------  ----------------------------------------------------
-    listen                Immediately after executing LISTEN ...;  the TG_TAG
-                          variable is the channel name.
-
-
     relation.create       New relation (table, view, or index) created;  note
                           that at the point that this event fires, the table's
                           constraints and column defaults have NOT yet been
@@ -65,37 +61,6 @@ The following events are planned, but have not yet been implemented:
 
 Examples
 --------
-This example implements a restriction on the LISTEN command, which prevents
-users from listening on a channel whose name begins with `pg_`.
-
-    postgres=# CREATE FUNCTION listen_filter()
-               RETURNS event_trigger
-               LANGUAGE plpgsql
-               AS $$
-                 BEGIN
-                   IF TG_TAG LIKE 'pg_%' THEN
-                     RAISE EXCEPTION 'Not permitted to listen on channel (%).', TG_TAG;
-                   END IF;
-                 END;
-               $$;
-    CREATE FUNCTION
-    postgres=# CREATE EVENT TRIGGER listen_restricted ON "stmt.listen.before"
-               EXECUTE PROCEDURE listen_filter();
-    CREATE EVENT TRIGGER
-    postgres=# LISTEN foo;
-    LISTEN
-    postgres=# NOTIFY foo;
-    NOTIFY
-    Asynchronous notification "foo" received from server process with PID xxx.
-    postgres=# LISTEN pg_foo;
-    ERROR:  Not permitted to listen on channel (pg_foo).
-    postgres=# NOTIFY pg_foo;
-    NOTIFY
-    postgres=# ALTER EVENT TRIGGER listen_restricted DISABLE;
-    ALTER EVENT TRIGGER
-    postgres=# LISTEN pg_foo;
-    LISTEN
-
 This example issues a NOTICE whenever a table is created with a name that
 begins with `test_`.
 

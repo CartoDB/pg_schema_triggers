@@ -33,16 +33,6 @@
 #include "trigger_funcs.h"
 
 
-/*** Event:  "listen" ***/
-
-
-void
-listen_event(const char *condition_name)
-{
-	FireEventTriggers("listen", condition_name, NULL);
-}
-
-
 /*** Event:  "relation.create" ***/
 
 
