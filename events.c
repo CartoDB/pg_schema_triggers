@@ -37,7 +37,7 @@
 
 
 typedef struct RelationCreate_EventInfo {
-	char *eventname;
+	EventInfo header;
 	Oid relation;
 	Oid relnamespace;
 	HeapTuple new;
@@ -47,7 +47,7 @@ typedef struct RelationCreate_EventInfo {
 void
 relation_create_event(ObjectAddress *rel)
 {
-	RelationCreate_EventInfo info;
+	RelationCreate_EventInfo *info;
 	char *nspname;
 	char *relname;
 	char *tag;
@@ -55,23 +55,20 @@ relation_create_event(ObjectAddress *rel)
 	Assert(rel->classId == RelationRelationId);
 
 	/* Set up the event info. */
-	info.eventname = "relation.create";
-	info.relation = rel->objectId;
-	info.relnamespace = get_object_namespace(rel);
-	info.new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf);
-	if (!HeapTupleIsValid(info.new))
+	info = (RelationCreate_EventInfo *)EventInfoAlloc("relation.create", sizeof(*info));
+	info->relation = rel->objectId;
+	info->relnamespace = get_object_namespace(rel);
+	info->new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf, info->header.mcontext);
+	if (!HeapTupleIsValid(info->new))
 		elog(ERROR, "couldn't find new pg_class row for oid=(%u)", rel->objectId);
 
 	/* Prepare the tag string. */
-	nspname = get_namespace_name(info.relnamespace);
+	nspname = get_namespace_name(info->relnamespace);
 	relname = get_rel_name(rel->objectId);
 	tag = quote_qualified_identifier(nspname, relname); 
 
-	/* Fire the trigger. */
-	FireEventTriggers("relation.create", tag, (EventInfo*)&info);
-
-	/* Free the new HeapTuple. */
-	heap_freetuple(info.new);
+	/* Enqueue the event. */
+	EnqueueEvent((EventInfo*) info);
 }
 
 
@@ -94,7 +91,7 @@ relation_create_eventinfo(PG_FUNCTION_ARGS)
 	BlessTupleDesc(tupdesc);
 
 	/* Get our EventInfo struct. */
-	info = (RelationCreate_EventInfo *)GetCurrentEventInfo("relation.create");
+	info = (RelationCreate_EventInfo *)GetCurrentEvent("relation.create");
 
 	/* Form and return the tuple. */
 	result[0] = ObjectIdGetDatum(info->relation);
@@ -112,7 +109,7 @@ relation_create_eventinfo(PG_FUNCTION_ARGS)
 
 
 typedef struct RelationAlter_EventInfo {
-	char *eventname;
+	EventInfo header;
 	Oid relation;
 	Oid relnamespace;
 	HeapTuple old;
@@ -123,7 +120,7 @@ typedef struct RelationAlter_EventInfo {
 void
 relation_alter_event(ObjectAddress *rel)
 {
-	RelationAlter_EventInfo info;
+	RelationAlter_EventInfo *info;
 	char *nspname;
 	char *relname;
 	char *tag;
@@ -131,27 +128,23 @@ relation_alter_event(ObjectAddress *rel)
 	Assert(rel->classId == RelationRelationId);
 
 	/* Set up the event info and save the old and new pg_class rows. */
-	info.eventname = "relation.alter";
-	info.relation = rel->objectId;
-	info.relnamespace = get_object_namespace(rel);
-	info.old = pgclass_fetch_tuple(rel->objectId, SnapshotNow);
-	info.new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf);
-	if (!HeapTupleIsValid(info.old))
+	info = (RelationAlter_EventInfo *)EventInfoAlloc("relation.alter", sizeof(*info));
+	info->relation = rel->objectId;
+	info->relnamespace = get_object_namespace(rel);
+	info->old = pgclass_fetch_tuple(rel->objectId, SnapshotNow, info->header.mcontext);
+	info->new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf, info->header.mcontext);
+	if (!HeapTupleIsValid(info->old))
 		elog(ERROR, "couldn't find old pg_class row for oid=(%u)", rel->objectId);
-	if (!HeapTupleIsValid(info.new))
+	if (!HeapTupleIsValid(info->new))
 		elog(ERROR, "couldn't find new pg_class row for oid=(%u)", rel->objectId);
 
 	/* Prepare the tag string. */
-	nspname = get_namespace_name(info.relnamespace);
+	nspname = get_namespace_name(info->relnamespace);
 	relname = get_rel_name(rel->objectId);
 	tag = quote_qualified_identifier(nspname, relname); 
 
-	/* Fire the trigger. */
-	FireEventTriggers("relation.alter", tag, (EventInfo*)&info);
-
-	/* Free the old and new tuples. */
-	heap_freetuple(info.old);
-	heap_freetuple(info.new);
+	/* Enqueue the event. */
+	EnqueueEvent((EventInfo*) info);
 }
 
 
@@ -174,7 +167,7 @@ relation_alter_eventinfo(PG_FUNCTION_ARGS)
 	BlessTupleDesc(tupdesc);
 
 	/* Get our EventInfo struct. */
-	info = (RelationAlter_EventInfo *)GetCurrentEventInfo("relation.alter");
+	info = (RelationAlter_EventInfo *)GetCurrentEvent("relation.alter");
 
 	/* Form and return the tuple. */
 	result[0] = ObjectIdGetDatum(info->relation);

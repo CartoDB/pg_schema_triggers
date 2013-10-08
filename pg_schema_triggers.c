@@ -105,7 +105,9 @@ utility_hook(Node *parsetree,
 	}
 
 	/* Pass all other commands through to the default implementation. */
+	StartNewEvent();
 	standard_ProcessUtility(parsetree, queryString, context, params, dest, completionTag);
+	EndEvent();
 }
 
 

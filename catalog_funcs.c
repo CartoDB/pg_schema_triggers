@@ -27,13 +27,14 @@
  * heap_freetuple().
  */
 HeapTuple
-catalog_fetch_tuple(Oid relation, Oid index, Oid row, Snapshot snapshot)
+catalog_fetch_tuple(Oid relation, Oid index, Oid row, Snapshot snapshot, MemoryContext mcontext)
 {
     Relation	reldesc;
     SysScanDesc	relscan;
     ScanKeyData	key[1];
     HeapTuple	reltuple;
     Oid			reltypeid;
+    MemoryContext old_mcontext;
 	
 	/* Scan key is an Oid. */
 	ScanKeyInit(&key[0],
@@ -61,10 +62,12 @@ catalog_fetch_tuple(Oid relation, Oid index, Oid row, Snapshot snapshot)
 		goto finish;
 
 	/* Copy the tuple and ensure that the Datum headers are set. */
+	old_mcontext = MemoryContextSwitchTo(mcontext);
 	reltuple = heap_copytuple(reltuple);
 	HeapTupleHeaderSetDatumLength(reltuple->t_data, reltuple->t_len);
 	HeapTupleHeaderSetTypeId(reltuple->t_data, reltypeid);
 	HeapTupleHeaderSetTypMod(reltuple->t_data, -1);
+	MemoryContextSwitchTo(old_mcontext);
 		
 finish:
 	/* Close the relation and return the copied tuple. */
@@ -75,7 +78,7 @@ finish:
 
 
 HeapTuple
-pgclass_fetch_tuple(Oid row, Snapshot snapshot)
+pgclass_fetch_tuple(Oid row, Snapshot snapshot, MemoryContext mcontext)
 {
-	return catalog_fetch_tuple(RelationRelationId, ClassOidIndexId, row, snapshot);
+	return catalog_fetch_tuple(RelationRelationId, ClassOidIndexId, row, snapshot, mcontext);
 }

@@ -13,16 +13,22 @@
 
 
 #include "postgres.h"
+#include "lib/ilist.h"
 
 
 typedef struct EventInfo {
-	char *eventname;
+	char eventname[NAMEDATALEN];
+	MemoryContext mcontext;
+	slist_node next;
 } EventInfo;
 
 
+void StartNewEvent(void);
+void EndEvent(void);
+EventInfo *EventInfoAlloc(const char *eventname, size_t struct_size);
 Oid CreateEventTriggerEx(const char *eventname, const char *trigname, Oid trigfunc);
-void FireEventTriggers(const char *eventname, const char *tag, EventInfo *info);
-EventInfo* GetCurrentEventInfo(const char *eventname);
+void EnqueueEvent(EventInfo *info);
+EventInfo* GetCurrentEvent(const char *eventname);
 
 
 #endif	/* SCHEMA_TRIGGERS_TRIGGER_FUNCS_H */
