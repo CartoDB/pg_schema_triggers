@@ -2,16 +2,16 @@
 
 -- First, try creating a bogus event trigger before we have loaded the
 -- extension.
-CREATE EVENT TRIGGER wont_work ON "relation.create"
+CREATE EVENT TRIGGER wont_work ON relation_create
 	EXECUTE PROCEDURE foo();
 CREATE EXTENSION pg_schema_triggers;
 
 -- Exercise the various cases that shouldn't work.
 CREATE EVENT TRIGGER wont_work ON phase_of_the_moon
 	EXECUTE PROCEDURE foo();
-CREATE EVENT TRIGGER wont_work ON "relation.create"
+CREATE EVENT TRIGGER wont_work ON relation_create
 	EXECUTE PROCEDURE undefined_function();
-CREATE EVENT TRIGGER wrong_func_result_type ON "relation.create"
+CREATE EVENT TRIGGER wrong_func_result_type ON relation_create
 	EXECUTE PROCEDURE pg_client_encoding();
 
 -- Before we create a working event trigger, we need a function to execute.
@@ -21,14 +21,14 @@ CREATE FUNCTION raise_notice()
  LANGUAGE plpgsql;
 
 -- Ensure that we're not allowed to specify a WHEN clause.
-CREATE EVENT TRIGGER cannot_have_when_clause ON "relation.create"
+CREATE EVENT TRIGGER cannot_have_when_clause ON relation_create
 	WHEN tag IN ('foo')
 	EXECUTE PROCEDURE raise_notice();
 
 -- Exercise the basic event trigger DDL.
-CREATE EVENT TRIGGER one ON "relation.create"
+CREATE EVENT TRIGGER one ON relation_create
 	EXECUTE PROCEDURE raise_notice();
-CREATE EVENT TRIGGER two ON "relation.alter"
+CREATE EVENT TRIGGER two ON relation_alter
 	EXECUTE PROCEDURE raise_notice();
 CREATE TABLE foobar();
 ALTER TABLE foobar ADD COLUMN a TEXT;

@@ -202,8 +202,8 @@ struct event {
 };
 
 struct event supported_events[] = {
-	{"relation.create"},
-	{"relation.alter"},
+	{"relation_create"},
+	{"relation_alter"},
 
 	/* end of list marker */
 	{NULL}

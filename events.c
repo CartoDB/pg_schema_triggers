@@ -33,7 +33,7 @@
 #include "trigger_funcs.h"
 
 
-/*** Event:  "relation.create" ***/
+/*** Event:  relation_create ***/
 
 
 typedef struct RelationCreate_EventInfo {
@@ -51,7 +51,7 @@ relation_create_event(ObjectAddress *rel)
 
 	/* Set up the event info. */
 	EnterEventMemoryContext();
-	info = (RelationCreate_EventInfo *)EventInfoAlloc("relation.create", sizeof(*info));
+	info = (RelationCreate_EventInfo *)EventInfoAlloc("relation_create", sizeof(*info));
 	info->relation = rel->objectId;
 	info->new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf);
 	LeaveEventMemoryContext();
@@ -84,7 +84,7 @@ relation_create_eventinfo(PG_FUNCTION_ARGS)
 	Assert(tupdesc->natts == sizeof result_isnull / sizeof result_isnull[0]);
 
 	/* Get our EventInfo struct. */
-	info = (RelationCreate_EventInfo *)GetCurrentEvent("relation.create");
+	info = (RelationCreate_EventInfo *)GetCurrentEvent("relation_create");
 
 	/* Form and return the tuple. */
 	result[0] = ObjectIdGetDatum(info->relation);
@@ -96,7 +96,7 @@ relation_create_eventinfo(PG_FUNCTION_ARGS)
 }
 
 
-/*** Event:  "relation.alter" ***/
+/*** Event:  relation_alter ***/
 
 
 typedef struct RelationAlter_EventInfo {
@@ -115,7 +115,7 @@ relation_alter_event(ObjectAddress *rel)
 
 	/* Set up the event info and save the old and new pg_class rows. */
 	EnterEventMemoryContext();
-	info = (RelationAlter_EventInfo *)EventInfoAlloc("relation.alter", sizeof(*info));
+	info = (RelationAlter_EventInfo *)EventInfoAlloc("relation_alter", sizeof(*info));
 	info->relation = rel->objectId;
 	info->old = pgclass_fetch_tuple(rel->objectId, SnapshotNow);
 	info->new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf);
@@ -151,7 +151,7 @@ relation_alter_eventinfo(PG_FUNCTION_ARGS)
 	Assert(tupdesc->natts == sizeof result_isnull / sizeof result_isnull[0]);
 
 	/* Get our EventInfo struct. */
-	info = (RelationAlter_EventInfo *)GetCurrentEvent("relation.alter");
+	info = (RelationAlter_EventInfo *)GetCurrentEvent("relation_alter");
 
 	/* Form and return the tuple. */
 	result[0] = ObjectIdGetDatum(info->relation);

@@ -21,7 +21,7 @@ the CREATE EVENT TRIGGER command.
 
     Event Name            Description
     --------------------  ----------------------------------------------------
-    relation.create       New relation (table, view, or index) created;  note
+    relation_create       New relation (table, view, or index) created;  note
                           that at the point that this event fires, the table's
                           constraints and column defaults have NOT yet been
                           created.  [This corresponds to the OAT_POST_CREATE
@@ -36,7 +36,7 @@ the CREATE EVENT TRIGGER command.
                               new			PG_CATALOG.PG_CLASS
 
 
-    relation.alter        An existing relation has been altered.  [This event
+    relation_alter        An existing relation has been altered.  [This event
     					  corresponds to the OAT_POST_ALTER hook.]
 
                           From the event trigger function, calling the
@@ -50,13 +50,13 @@ the CREATE EVENT TRIGGER command.
 
 The following events are planned, but have not yet been implemented:
 
-    relation.drop         ...
-    column.add            ALTER TABLE ... ADD COLUMN ...
+    relation_drop         ...
+    column_add            ALTER TABLE ... ADD COLUMN ...
                           (Note that no "column.add" events will be fired for
                           a new relation being created.)
-    column.alter_type     ALTER TABLE ... ALTER COLUMN ... SET DATA TYPE ...
-    column.drop           ALTER TABLE ... DROP COLUMN ...
-    column.rename         ALTER TABLE ... RENAME COLUMN ... TO ...
+    column_alter_type     ALTER TABLE ... ALTER COLUMN ... SET DATA TYPE ...
+    column_drop           ALTER TABLE ... DROP COLUMN ...
+    column_rename         ALTER TABLE ... RENAME COLUMN ... TO ...
 
 
 Examples
@@ -81,7 +81,7 @@ begins with `test_`.
                  END;
                $$;
     CREATE FUNCTION
-    postgres=# CREATE EVENT TRIGGER test_relations ON "relation.create"
+    postgres=# CREATE EVENT TRIGGER test_relations ON relation_create
                EXECUTE PROCEDURE on_relation_create();
     CREATE EVENT TRIGGER
     postgres=# create table foobar();
