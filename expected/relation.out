@@ -1,5 +1,5 @@
--- Create an event trigger for the relation_create event.
 CREATE EXTENSION pg_schema_triggers;
+-- Create an event trigger for the relation_create event.
 CREATE FUNCTION on_relation_create()
  RETURNS event_trigger
  LANGUAGE plpgsql
@@ -19,7 +19,45 @@ CREATE FUNCTION on_relation_create()
 $$;
 CREATE EVENT TRIGGER relcreate ON relation_create
 	EXECUTE PROCEDURE on_relation_create();
--- Create some tables, and then drop them.
+-- Create an event trigger for the relation_alter event.
+CREATE FUNCTION on_relation_alter()
+ RETURNS event_trigger
+ LANGUAGE plpgsql
+ AS $$
+	DECLARE
+		event_info SCHEMA_TRIGGERS.RELATION_ALTER_EVENTINFO;
+	BEGIN
+		event_info := schema_triggers.get_relation_alter_eventinfo();
+		IF (event_info.new).relname LIKE 'test_%' THEN
+			RAISE EXCEPTION 'relation name cannot begin with "test_"';
+		END IF;
+		RAISE NOTICE 'on_relation_alter:';
+		RAISE NOTICE '  old.relname="%", old.reloptions=%',
+			(event_info.old).relname, (event_info.old).reloptions;
+		RAISE NOTICE '  new.relname="%", new.reloptions=%',
+			(event_info.new).relname, (event_info.new).reloptions;
+	END;
+$$;
+CREATE EVENT TRIGGER relalter ON relation_alter
+	EXECUTE PROCEDURE on_relation_alter();
+-- Create an event trigger for the relation_drop event.
+CREATE FUNCTION on_relation_drop()
+ RETURNS event_trigger
+ LANGUAGE plpgsql
+ AS $$
+	DECLARE
+		event_info SCHEMA_TRIGGERS.RELATION_DROP_EVENTINFO;
+	BEGIN
+		event_info := schema_triggers.get_relation_drop_eventinfo();
+		IF (event_info.old).relkind = 'r' THEN
+		  RAISE NOTICE 'on_relation_drop:  old.relname="%", old.relnatts=%, old.relhaspkey=''%''',
+			(event_info.old).relname, (event_info.old).relnatts, (event_info.old).relhaspkey;
+		END IF;
+	END;
+$$;
+CREATE EVENT TRIGGER reldrop ON relation_drop
+	EXECUTE PROCEDURE on_relation_drop();
+-- Create some tables.
 CREATE TABLE foobar();
 NOTICE:  on_relation_create: "foobar"
 NOTICE:    (relnamespace=2200, relkind='r', relnatts=0, relhaspkey='f')
@@ -32,13 +70,32 @@ NOTICE:  on_relation_create: "baz"
 NOTICE:    (relnamespace=2200, relkind='r', relnatts=3, relhaspkey='f')
 NOTICE:  on_relation_create: "baz_pkey"
 NOTICE:    (relnamespace=2200, relkind='i', relnatts=1, relhaspkey='f')
+-- Column DDL shouldn't trigger the relation_* events.
 ALTER TABLE foobar ADD COLUMN x TEXT NOT NULL;
 ALTER TABLE baz DROP COLUMN b;
-DROP TABLE foobar;
+-- But let's rename them and change some options.
+ALTER TABLE foobar RENAME TO foobar_two;
+NOTICE:  on_relation_alter:
+NOTICE:    old.relname="foobar", old.reloptions=<NULL>
+NOTICE:    new.relname="foobar_two", new.reloptions=<NULL>
+ALTER TABLE baz RENAME TO test_baz;		-- (this won't work)
+ERROR:  relation name cannot begin with "test_"
+ALTER TABLE baz SET (fillfactor = 50);
+NOTICE:  on_relation_alter:
+NOTICE:    old.relname="baz", old.reloptions=<NULL>
+NOTICE:    new.relname="baz", new.reloptions={fillfactor=50}
+-- Then drop them.
+DROP TABLE foobar_two;
+NOTICE:  on_relation_drop:  old.relname="foobar_two", old.relnatts=1, old.relhaspkey='f'
 DROP TABLE IF EXISTS test_foobar;  -- (it shouldn't exist...)
 NOTICE:  table "test_foobar" does not exist, skipping
 DROP TABLE baz;
+NOTICE:  on_relation_drop:  old.relname="baz", old.relnatts=3, old.relhaspkey='t'
 -- Clean up the event trigger.
 DROP EVENT TRIGGER relcreate;
+DROP EVENT TRIGGER relalter;
+DROP EVENT TRIGGER reldrop;
 DROP FUNCTION on_relation_create();
+DROP FUNCTION on_relation_alter();
+DROP FUNCTION on_relation_drop();
 DROP EXTENSION pg_schema_triggers;
