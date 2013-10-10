@@ -44,6 +44,7 @@ typedef struct EventTriggerContext {
 	MemoryContext mcontext;
 	EventTriggerData trigdata;
 	EventInfo *info;
+	struct EventTriggerContext *prev;
 } EventTriggerContext;
 
 EventTriggerContext *current_context = NULL;
@@ -149,9 +150,7 @@ CreateEventTriggerEx(const char *eventname, const char *trigname, Oid trigfunc)
 void
 StartNewEvent()
 {
-	/* FIXME:  event triggers can't fire other events */
-	if (current_context != NULL)
-		elog(ERROR, "nested event triggers not yet supported.");
+	EventTriggerContext *prev = current_context;
 
 	current_context = palloc(sizeof(EventTriggerContext));
 	current_context->mcontext = AllocSetContextCreate(CurrentMemoryContext,
@@ -159,16 +158,20 @@ StartNewEvent()
                                      ALLOCSET_DEFAULT_MINSIZE,
                                      ALLOCSET_DEFAULT_INITSIZE,
                                      ALLOCSET_DEFAULT_MAXSIZE);
+    current_context->prev = prev;
 }
 
 
 void
 EndEvent()
 {
+	EventTriggerContext *prev;
+
 	Assert(current_context != NULL);
-	
 	MemoryContextDelete(current_context->mcontext);
+	prev = current_context->prev;
 	pfree(current_context);
+	current_context = prev;
 }
 
 
