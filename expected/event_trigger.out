@@ -34,7 +34,6 @@ CREATE EVENT TRIGGER two ON relation_alter
 CREATE TABLE foobar();
 NOTICE:  do_notice:  event=(relation_create)
 ALTER TABLE foobar ADD COLUMN a TEXT;
-NOTICE:  do_notice:  event=(relation_alter)
 DROP TABLE foobar;
 ALTER EVENT TRIGGER one DISABLE;
 ALTER EVENT TRIGGER two DISABLE;

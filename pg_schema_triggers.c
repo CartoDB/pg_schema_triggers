@@ -145,11 +145,9 @@ objectaccess_hook(ObjectAccessType access,
 				if (args->is_internal)
 					return;
 
-				switch (classId)
+				if (classId == RelationRelationId && subId == 0)
 				{
-					case RelationRelationId:
-						relation_create_event(&object);
-						break;
+					relation_create_event(&object);
 				}
 			}
 			break;
