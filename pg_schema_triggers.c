@@ -108,7 +108,17 @@ utility_hook(Node *parsetree,
 	if (context != PROCESS_UTILITY_SUBCOMMAND)
 		StartNewEvent();
 
-	standard_ProcessUtility(parsetree, queryString, context, params, dest, completionTag);
+	PG_TRY();
+	{
+		standard_ProcessUtility(parsetree, queryString, context, params, dest, completionTag);
+	}
+	PG_CATCH();
+	{
+		if (context != PROCESS_UTILITY_SUBCOMMAND)
+			EndEvent();
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
 
 	if (context != PROCESS_UTILITY_SUBCOMMAND)
 		EndEvent();
