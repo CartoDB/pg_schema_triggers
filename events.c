@@ -47,12 +47,14 @@ void
 relation_create_event(ObjectAddress *rel)
 {
 	RelationCreate_EventInfo *info;
+	Assert(rel->classId == RelationRelationId);
 
 	/* Set up the event info. */
-	Assert(rel->classId == RelationRelationId);
+	EnterEventMemoryContext();
 	info = (RelationCreate_EventInfo *)EventInfoAlloc("relation.create", sizeof(*info));
 	info->relation = rel->objectId;
-	info->new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf, info->header.mcontext);
+	info->new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf);
+	LeaveEventMemoryContext();
 	if (!HeapTupleIsValid(info->new))
 		elog(ERROR, "couldn't find new pg_class row for oid=(%u)", rel->objectId);
 
@@ -109,13 +111,15 @@ void
 relation_alter_event(ObjectAddress *rel)
 {
 	RelationAlter_EventInfo *info;
+	Assert(rel->classId == RelationRelationId);
 
 	/* Set up the event info and save the old and new pg_class rows. */
-	Assert(rel->classId == RelationRelationId);
+	EnterEventMemoryContext();
 	info = (RelationAlter_EventInfo *)EventInfoAlloc("relation.alter", sizeof(*info));
 	info->relation = rel->objectId;
-	info->old = pgclass_fetch_tuple(rel->objectId, SnapshotNow, info->header.mcontext);
-	info->new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf, info->header.mcontext);
+	info->old = pgclass_fetch_tuple(rel->objectId, SnapshotNow);
+	info->new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf);
+	LeaveEventMemoryContext();
 	if (!HeapTupleIsValid(info->old))
 		elog(ERROR, "couldn't find old pg_class row for oid=(%u)", rel->objectId);
 	if (!HeapTupleIsValid(info->new))

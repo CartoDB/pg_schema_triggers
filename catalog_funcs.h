@@ -17,10 +17,10 @@
 #include "utils/snapshot.h"
 
 
-HeapTuple catalog_fetch_tuple(Oid relation, Oid index, Oid row, Snapshot snapshot, MemoryContext mcontext);
+HeapTuple catalog_fetch_tuple(Oid relation, Oid index, Oid row, Snapshot snapshot);
 
 /* Convenience wrappers around catalog_fetch_tuple(). */
-HeapTuple pgclass_fetch_tuple(Oid row, Snapshot snapshot, MemoryContext mcontext);
+HeapTuple pgclass_fetch_tuple(Oid row, Snapshot snapshot);
 
 
 #endif	/* SCHEMA_TRIGGERS_CATALOG_FUNCS_H */

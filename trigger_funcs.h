@@ -18,12 +18,13 @@
 
 typedef struct EventInfo {
 	char eventname[NAMEDATALEN];
-	MemoryContext mcontext;
 	dlist_node event_list_node;
 } EventInfo;
 
 
 void StartNewEvent(void);
+void EnterEventMemoryContext(void);
+void LeaveEventMemoryContext(void);
 void EndEvent(void);
 EventInfo *EventInfoAlloc(const char *eventname, size_t struct_size);
 Oid CreateEventTriggerEx(const char *eventname, const char *trigname, Oid trigfunc);

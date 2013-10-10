@@ -42,6 +42,7 @@
 /* Holds the current event info. */
 typedef struct EventTriggerContext {
 	MemoryContext mcontext;
+	MemoryContext old_mcontext;		/* Enter/LeaveMemoryContext() use this. */
 	EventTriggerData trigdata;
 	EventInfo *info;
 	struct EventTriggerContext *prev;
@@ -159,8 +160,30 @@ StartNewEvent()
                                      ALLOCSET_DEFAULT_MINSIZE,
                                      ALLOCSET_DEFAULT_INITSIZE,
                                      ALLOCSET_DEFAULT_MAXSIZE);
+	current_context->old_mcontext = NULL;
     current_context->prev = prev;
 	dlist_init(&current_context->event_list_head);
+}
+
+
+void
+EnterEventMemoryContext()
+{
+	Assert(current_context->old_mcontext == NULL);
+	
+	current_context->old_mcontext = MemoryContextSwitchTo(current_context->mcontext);
+}
+
+
+void
+LeaveEventMemoryContext()
+{
+	MemoryContext prev;
+	
+	Assert(current_context->old_mcontext != NULL);
+	prev = MemoryContextSwitchTo(current_context->old_mcontext);
+	Assert(prev == current_context->mcontext);
+	current_context->old_mcontext = NULL;
 }
 
 
@@ -201,7 +224,6 @@ EventInfoAlloc(const char *eventname, size_t struct_size)
 	info = (EventInfo *)palloc0(struct_size);
 	strncpy(info->eventname, eventname, sizeof(info->eventname) - 1);
 	info->eventname[sizeof(info->eventname) - 1] = '\0';
-	info->mcontext = current_context->mcontext;
 	MemoryContextSwitchTo(old_mcontext);
 
 	return info;
