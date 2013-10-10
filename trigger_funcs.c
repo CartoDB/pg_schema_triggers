@@ -45,6 +45,7 @@ typedef struct EventTriggerContext {
 	EventTriggerData trigdata;
 	EventInfo *info;
 	struct EventTriggerContext *prev;
+	dlist_head event_list_head;
 } EventTriggerContext;
 
 EventTriggerContext *current_context = NULL;
@@ -159,6 +160,7 @@ StartNewEvent()
                                      ALLOCSET_DEFAULT_INITSIZE,
                                      ALLOCSET_DEFAULT_MAXSIZE);
     current_context->prev = prev;
+	dlist_init(&current_context->event_list_head);
 }
 
 
@@ -166,8 +168,19 @@ void
 EndEvent()
 {
 	EventTriggerContext *prev;
+	dlist_iter iter;
 
 	Assert(current_context != NULL);
+
+	/* Fire any enqueued events. */
+	dlist_foreach(iter, &(current_context->event_list_head))
+	{
+		EventInfo *event = dlist_container(EventInfo, event_list_node, iter.cur);
+
+		fire_event(event);
+	}
+
+	/* Clean up. */
 	MemoryContextDelete(current_context->mcontext);
 	prev = current_context->prev;
 	pfree(current_context);
@@ -204,8 +217,9 @@ EventInfoAlloc(const char *eventname, size_t struct_size)
 void
 EnqueueEvent(EventInfo *info)
 {
-	/* FIXME:  right now, we just fire the event immediately. */
-	fire_event(info);
+	if (current_context == NULL)
+		elog(ERROR, "schema trigger event occurred outside any utility command");
+	dlist_push_tail(&current_context->event_list_head, &info->event_list_node);
 }
 
 

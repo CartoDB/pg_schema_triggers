@@ -19,7 +19,7 @@
 typedef struct EventInfo {
 	char eventname[NAMEDATALEN];
 	MemoryContext mcontext;
-	slist_node next;
+	dlist_node event_list_node;
 } EventInfo;
 
 
