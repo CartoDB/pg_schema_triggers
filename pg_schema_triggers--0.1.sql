@@ -5,7 +5,6 @@
 -- Info for "relation.create" event.
 CREATE TYPE relation_create_eventinfo AS (
 	relation        REGCLASS,
-	relnamespace    OID,
 	new				PG_CATALOG.PG_CLASS
 );
 CREATE FUNCTION get_relation_create_eventinfo()
