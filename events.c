@@ -132,8 +132,8 @@ relation_alter_eventinfo(PG_FUNCTION_ARGS)
 {
 	RelationAlter_EventInfo *info;
 	TupleDesc tupdesc;
-	Datum result[4];
-	bool result_isnull[4];
+	Datum result[3];
+	bool result_isnull[3];
 	HeapTuple tuple;
 	
 	/* Get the tupdesc for our return type. */
