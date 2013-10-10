@@ -16,7 +16,6 @@
 #include "access/htup_details.h"
 #include "access/xact.h"
 #include "catalog/objectaccess.h"
-#include "catalog/objectaddress.h"
 #include "catalog/pg_class.h"
 #include "catalog/pg_type.h"
 #include "parser/parse_func.h"
@@ -44,19 +43,18 @@ typedef struct RelationCreate_EventInfo {
 
 
 void
-relation_create_event(ObjectAddress *rel)
+relation_create_event(Oid rel)
 {
 	RelationCreate_EventInfo *info;
-	Assert(rel->classId == RelationRelationId);
 
 	/* Set up the event info. */
 	EnterEventMemoryContext();
 	info = (RelationCreate_EventInfo *)EventInfoAlloc("relation_create", sizeof(*info));
-	info->relation = rel->objectId;
-	info->new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf);
+	info->relation = rel;
+	info->new = pgclass_fetch_tuple(rel, SnapshotSelf);
 	LeaveEventMemoryContext();
 	if (!HeapTupleIsValid(info->new))
-		elog(ERROR, "couldn't find new pg_class row for oid=(%u)", rel->objectId);
+		elog(ERROR, "couldn't find new pg_class row for oid=(%u)", rel);
 
 	/* Enqueue the event. */
 	EnqueueEvent((EventInfo*) info);
@@ -108,22 +106,21 @@ typedef struct RelationAlter_EventInfo {
 
 
 void
-relation_alter_event(ObjectAddress *rel)
+relation_alter_event(Oid rel)
 {
 	RelationAlter_EventInfo *info;
-	Assert(rel->classId == RelationRelationId);
 
 	/* Set up the event info and save the old and new pg_class rows. */
 	EnterEventMemoryContext();
 	info = (RelationAlter_EventInfo *)EventInfoAlloc("relation_alter", sizeof(*info));
-	info->relation = rel->objectId;
-	info->old = pgclass_fetch_tuple(rel->objectId, SnapshotNow);
-	info->new = pgclass_fetch_tuple(rel->objectId, SnapshotSelf);
+	info->relation = rel;
+	info->old = pgclass_fetch_tuple(rel, SnapshotNow);
+	info->new = pgclass_fetch_tuple(rel, SnapshotSelf);
 	LeaveEventMemoryContext();
 	if (!HeapTupleIsValid(info->old))
-		elog(ERROR, "couldn't find old pg_class row for oid=(%u)", rel->objectId);
+		elog(ERROR, "couldn't find old pg_class row for oid=(%u)", rel);
 	if (!HeapTupleIsValid(info->new))
-		elog(ERROR, "couldn't find new pg_class row for oid=(%u)", rel->objectId);
+		elog(ERROR, "couldn't find new pg_class row for oid=(%u)", rel);
 
 	/* Enqueue the event. */
 	EnqueueEvent((EventInfo*) info);
@@ -178,24 +175,23 @@ typedef struct ColumnAlter_EventInfo {
 
 
 void
-column_alter_event(ObjectAddress *rel, int16 attnum)
+column_alter_event(Oid rel, int16 attnum)
 {
 	ColumnAlter_EventInfo *info;
-	Assert(rel->classId == RelationRelationId);
 	Assert(attnum > 0);
 
 	/* Set up the event info and save the old and new pg_attr rows. */
 	EnterEventMemoryContext();
 	info = (ColumnAlter_EventInfo *)EventInfoAlloc("column_alter", sizeof(*info));
-	info->relation = rel->objectId;
+	info->relation = rel;
 	info->attnum = attnum;
-	info->old = pgattribute_fetch_tuple(rel->objectId, attnum, SnapshotNow);
-	info->new = pgattribute_fetch_tuple(rel->objectId, attnum, SnapshotSelf);
+	info->old = pgattribute_fetch_tuple(rel, attnum, SnapshotNow);
+	info->new = pgattribute_fetch_tuple(rel, attnum, SnapshotSelf);
 	LeaveEventMemoryContext();
 	if (!HeapTupleIsValid(info->old))
-		elog(ERROR, "couldn't find old pg_attr row for oid,attnum=(%u,%d)", rel->objectId, attnum);
+		elog(ERROR, "couldn't find old pg_attr row for oid,attnum=(%u,%d)", rel, attnum);
 	if (!HeapTupleIsValid(info->new))
-		elog(ERROR, "couldn't find new pg_attr row for oid,attnum=(%u,%d)", rel->objectId, attnum);
+		elog(ERROR, "couldn't find new pg_attr row for oid,attnum=(%u,%d)", rel, attnum);
 
 	/* Enqueue the event. */
 	EnqueueEvent((EventInfo*) info);

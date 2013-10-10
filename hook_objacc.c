@@ -8,7 +8,6 @@
 
 #include "postgres.h"
 #include "catalog/objectaccess.h"
-#include "catalog/objectaddress.h"
 #include "catalog/pg_class.h"
 #include "utils/builtins.h"
 
@@ -71,12 +70,6 @@ objectaccess_hook(ObjectAccessType access,
 	int subId,
 	void *arg)
 {
-	ObjectAddress object;
-
-	object.classId = classId;
-	object.objectId = objectId;
-	object.objectSubId = subId;
-
 	switch (access)
 	{
 		case OAT_POST_CREATE:
@@ -88,7 +81,7 @@ objectaccess_hook(ObjectAccessType access,
 
 				if (classId == RelationRelationId && subId == 0)
 				{
-					relation_create_event(&object);
+					relation_create_event(objectId);
 				}
 			}
 			break;
@@ -109,11 +102,11 @@ objectaccess_hook(ObjectAccessType access,
 
 				if (classId == RelationRelationId && subId == 0)
 				{
-					relation_alter_event(&object);
+					relation_alter_event(objectId);
 				}
 				else if (classId == RelationRelationId && subId != 0)
 				{
-					column_alter_event(&object, subId);
+					column_alter_event(objectId, subId);
 				}
 			}
 			break;

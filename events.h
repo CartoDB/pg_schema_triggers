@@ -16,16 +16,16 @@
 #include "fmgr.h"
 
 
-void relation_create_event(ObjectAddress *rel);
+void relation_create_event(Oid rel);
 Datum relation_create_eventinfo(PG_FUNCTION_ARGS);
 
-void relation_alter_event(ObjectAddress *rel);
+void relation_alter_event(Oid rel);
 Datum relation_alter_eventinfo(PG_FUNCTION_ARGS);
 
-void relation_drop_event(ObjectAddress *rel);
+void relation_drop_event(Oid rel);
 Datum relation_drop_eventinfo(PG_FUNCTION_ARGS);
 
-void column_alter_event(ObjectAddress *rel, int16 attnum);
+void column_alter_event(Oid rel, int16 attnum);
 Datum column_alter_eventinfo(PG_FUNCTION_ARGS);
 
 
