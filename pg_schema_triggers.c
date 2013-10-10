@@ -124,6 +124,7 @@ struct event {
 };
 
 struct event supported_events[] = {
+	{"column_add"},
 	{"column_alter"},
 	{"relation_create"},
 	{"relation_alter"},

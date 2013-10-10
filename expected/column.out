@@ -1,6 +1,22 @@
--- Create an event trigger for the column_alter event.
 CREATE EXTENSION pg_schema_triggers;
-CREATE OR REPLACE FUNCTION public.on_column_alter()
+-- Create an event trigger for the column_add event.
+CREATE OR REPLACE FUNCTION on_column_add()
+ RETURNS event_trigger
+ LANGUAGE plpgsql
+ AS $$
+	DECLARE
+		event_info SCHEMA_TRIGGERS.COLUMN_ADD_EVENTINFO;
+	BEGIN
+		event_info := schema_triggers.get_column_add_eventinfo();
+		RAISE NOTICE 'on_column_add(%, %)', event_info.relation, event_info.attnum;
+		RAISE NOTICE '  new.attname=''%'', new.atttypid=%, new.attnotnull=''%''',
+	 		(event_info.new).attname, (event_info.new).atttypid, (event_info.new).attnotnull;
+	END;
+ $$;
+CREATE EVENT TRIGGER coladd ON column_add
+	EXECUTE PROCEDURE on_column_add();
+-- Create an event trigger for the column_alter event.
+CREATE OR REPLACE FUNCTION on_column_alter()
  RETURNS event_trigger
  LANGUAGE plpgsql
  AS $$
@@ -20,6 +36,8 @@ CREATE EVENT TRIGGER colalter ON column_alter
 -- Create some tables, and then alter their columns.
 CREATE TABLE foobar();
 ALTER TABLE foobar ADD COLUMN x TEXT NOT NULL;
+NOTICE:  on_column_add(foobar, 1)
+NOTICE:    new.attname='x', new.atttypid=25, new.attnotnull='t'
 ALTER TABLE foobar RENAME COLUMN x TO xxx;
 NOTICE:  on_column_alter(foobar, 1)
 NOTICE:    old.attname='x', old.atttypid=25, old.attnotnull='t'
@@ -52,6 +70,8 @@ ALTER TABLE xyzzy
 NOTICE:  on_column_alter(xyzzy, 1)
 NOTICE:    old.attname='abc', old.atttypid=23, old.attnotnull='f'
 NOTICE:    new.attname='abc', new.atttypid=25, new.attnotnull='f'
+NOTICE:  on_column_add(xyzzy, 4)
+NOTICE:    new.attname='jkl', new.atttypid=16, new.attnotnull='t'
 NOTICE:  on_column_alter(xyzzy, 3)
 NOTICE:    old.attname='ghi', old.atttypid=23, old.attnotnull='f'
 NOTICE:    new.attname='ghi', new.atttypid=23, new.attnotnull='t'

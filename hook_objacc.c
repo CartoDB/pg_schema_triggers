@@ -83,6 +83,10 @@ objectaccess_hook(ObjectAccessType access,
 				{
 					relation_create_event(objectId);
 				}
+				else if (classId == RelationRelationId && subId != 0)
+				{
+					column_add_event(objectId, subId);
+				}
 			}
 			break;
 

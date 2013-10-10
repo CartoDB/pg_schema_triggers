@@ -25,6 +25,18 @@ CREATE FUNCTION get_relation_alter_eventinfo()
 	AS 'pg_schema_triggers', 'relation_alter_eventinfo';
 
 
+-- Info for column_add event.
+CREATE TYPE column_add_eventinfo AS (
+	relation		REGCLASS,
+	attnum			INT2,
+	new				PG_CATALOG.PG_ATTRIBUTE
+);
+CREATE FUNCTION get_column_add_eventinfo()
+	RETURNS column_add_eventinfo
+	LANGUAGE C
+	AS 'pg_schema_triggers', 'column_add_eventinfo';
+
+
 -- Info for column_alter event.
 CREATE TYPE column_alter_eventinfo AS (
 	relation		REGCLASS,

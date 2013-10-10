@@ -48,6 +48,19 @@ the CREATE EVENT TRIGGER command.
                               new			PG_CATALOG.PG_CLASS
 
 
+    column_add            A new column has been added to a relation.  Note,
+                          this will only be called for columns added *after*
+                          a relation is first created.
+
+                          From the event trigger function, calling the
+                          get_column_add_eventinfo() function will return
+                          a COLUMN_ADD_EVENTINFO record: 
+
+                              relation      REGCLASS
+                              attnum		INT16
+                              new			PG_CATALOG.PG_ATTRIBUTE
+
+
     column_alter          An existing column has been altered.  [This event
     					  corresponds to the OAT_POST_ALTER hook.]
 
@@ -64,9 +77,6 @@ the CREATE EVENT TRIGGER command.
 The following events are planned, but have not yet been implemented:
 
     relation_drop         ...
-    column_add            ALTER TABLE ... ADD COLUMN ...
-                          (Note that no "column.add" events will be fired for
-                          a new relation being created.)
     column_drop           ALTER TABLE ... DROP COLUMN ...
     column_rename         ALTER TABLE ... RENAME COLUMN ... TO ...
 

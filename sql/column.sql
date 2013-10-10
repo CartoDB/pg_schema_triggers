@@ -1,6 +1,24 @@
--- Create an event trigger for the column_alter event.
 CREATE EXTENSION pg_schema_triggers;
-CREATE OR REPLACE FUNCTION public.on_column_alter()
+
+-- Create an event trigger for the column_add event.
+CREATE OR REPLACE FUNCTION on_column_add()
+ RETURNS event_trigger
+ LANGUAGE plpgsql
+ AS $$
+	DECLARE
+		event_info SCHEMA_TRIGGERS.COLUMN_ADD_EVENTINFO;
+	BEGIN
+		event_info := schema_triggers.get_column_add_eventinfo();
+		RAISE NOTICE 'on_column_add(%, %)', event_info.relation, event_info.attnum;
+		RAISE NOTICE '  new.attname=''%'', new.atttypid=%, new.attnotnull=''%''',
+	 		(event_info.new).attname, (event_info.new).atttypid, (event_info.new).attnotnull;
+	END;
+ $$;
+CREATE EVENT TRIGGER coladd ON column_add
+	EXECUTE PROCEDURE on_column_add();
+
+-- Create an event trigger for the column_alter event.
+CREATE OR REPLACE FUNCTION on_column_alter()
  RETURNS event_trigger
  LANGUAGE plpgsql
  AS $$

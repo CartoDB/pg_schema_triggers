@@ -162,6 +162,73 @@ relation_alter_eventinfo(PG_FUNCTION_ARGS)
 }
 
 
+/*** Event:  column_add ***/
+
+
+typedef struct ColumnAdd_EventInfo {
+	EventInfo header;
+	Oid relation;
+	int16 attnum;
+	HeapTuple new;
+} ColumnAdd_EventInfo;
+
+
+void
+column_add_event(Oid rel, int16 attnum)
+{
+	ColumnAdd_EventInfo *info;
+	Assert(attnum > 0);
+
+	/* Set up the event info and save the new pg_attr row. */
+	EnterEventMemoryContext();
+	info = (ColumnAdd_EventInfo *)EventInfoAlloc("column_add", sizeof(*info));
+	info->relation = rel;
+	info->attnum = attnum;
+	info->new = pgattribute_fetch_tuple(rel, attnum, SnapshotSelf);
+	LeaveEventMemoryContext();
+	if (!HeapTupleIsValid(info->new))
+		elog(ERROR, "couldn't find new pg_attribute row for oid,attnum=(%u,%d)", rel, attnum);
+
+	/* Enqueue the event. */
+	EnqueueEvent((EventInfo*) info);
+}
+
+
+PG_FUNCTION_INFO_V1(column_add_eventinfo);
+Datum
+column_add_eventinfo(PG_FUNCTION_ARGS)
+{
+	ColumnAdd_EventInfo *info;
+	TupleDesc tupdesc;
+	Datum result[3];
+	bool result_isnull[3];
+	HeapTuple tuple;
+	
+	/* Get the tupdesc for our return type. */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("function returning record called in context "
+				        "that cannot accept type record")));
+	BlessTupleDesc(tupdesc);
+	Assert(tupdesc->natts == sizeof result / sizeof result[0]);
+	Assert(tupdesc->natts == sizeof result_isnull / sizeof result_isnull[0]);
+
+	/* Get our EventInfo struct. */
+	info = (ColumnAdd_EventInfo *)GetCurrentEvent("column_add");
+
+	/* Form and return the tuple. */
+	result[0] = ObjectIdGetDatum(info->relation);
+	result[1] = Int16GetDatum(info->attnum);
+	result[2] = HeapTupleGetDatum(info->new);
+	result_isnull[0] = false;
+	result_isnull[1] = false;
+	result_isnull[2] = false;
+	tuple = heap_form_tuple(tupdesc, result, result_isnull);
+	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
+}
+
+
 /*** Event:  column_alter ***/
 
 
