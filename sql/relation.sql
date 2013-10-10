@@ -1,5 +1,6 @@
--- Create an event trigger for the relation_create event.
 CREATE EXTENSION pg_schema_triggers;
+
+-- Create an event trigger for the relation_create event.
 CREATE FUNCTION on_relation_create()
  RETURNS event_trigger
  LANGUAGE plpgsql
@@ -20,6 +21,24 @@ $$;
 CREATE EVENT TRIGGER relcreate ON relation_create
 	EXECUTE PROCEDURE on_relation_create();
 
+-- Create an event trigger for the relation_drop event.
+CREATE FUNCTION on_relation_drop()
+ RETURNS event_trigger
+ LANGUAGE plpgsql
+ AS $$
+	DECLARE
+		event_info SCHEMA_TRIGGERS.RELATION_DROP_EVENTINFO;
+	BEGIN
+		event_info := schema_triggers.get_relation_drop_eventinfo();
+		IF (event_info.old).relkind = 'r' THEN
+		  RAISE NOTICE 'on_relation_drop:  old.relname="%", old.relnatts=%, old.relhaspkey=''%''',
+			(event_info.old).relname, (event_info.old).relnatts, (event_info.old).relhaspkey;
+		END IF;
+	END;
+$$;
+CREATE EVENT TRIGGER reldrop ON relation_drop
+	EXECUTE PROCEDURE on_relation_drop();
+
 -- Create some tables, and then drop them.
 CREATE TABLE foobar();
 CREATE TABLE test_foobar();
@@ -32,5 +51,7 @@ DROP TABLE baz;
 
 -- Clean up the event trigger.
 DROP EVENT TRIGGER relcreate;
+DROP EVENT TRIGGER reldrop;
 DROP FUNCTION on_relation_create();
+DROP FUNCTION on_relation_drop();
 DROP EXTENSION pg_schema_triggers;

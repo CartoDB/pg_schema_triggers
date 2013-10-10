@@ -165,9 +165,29 @@ relation_alter_eventinfo(PG_FUNCTION_ARGS)
 /*** Event:  relation_drop ***/
 
 
+typedef struct RelationDrop_EventInfo {
+	EventInfo header;
+	Oid relation;
+	HeapTuple old;
+} RelationDrop_EventInfo;
+
+
 void
 relation_drop_event(Oid rel)
 {
+	RelationDrop_EventInfo *info;
+
+	/* Set up the event info and save the old pg_class row. */
+	EnterEventMemoryContext();
+	info = (RelationDrop_EventInfo *)EventInfoAlloc("relation_drop", sizeof(*info));
+	info->relation = rel;
+	info->old = pgclass_fetch_tuple(rel, SnapshotNow);
+	LeaveEventMemoryContext();
+	if (!HeapTupleIsValid(info->old))
+		elog(ERROR, "couldn't find old pg_class row for oid=(%u)", rel);
+
+	/* Enqueue the event. */
+	EnqueueEvent((EventInfo*) info);
 }
 
 
@@ -175,7 +195,32 @@ PG_FUNCTION_INFO_V1(relation_drop_eventinfo);
 Datum
 relation_drop_eventinfo(PG_FUNCTION_ARGS)
 {
-	PG_RETURN_NULL();
+	RelationDrop_EventInfo *info;
+	TupleDesc tupdesc;
+	Datum result[2];
+	bool result_isnull[2];
+	HeapTuple tuple;
+	
+	/* Get the tupdesc for our return type. */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("function returning record called in context "
+				        "that cannot accept type record")));
+	BlessTupleDesc(tupdesc);
+	Assert(tupdesc->natts == sizeof result / sizeof result[0]);
+	Assert(tupdesc->natts == sizeof result_isnull / sizeof result_isnull[0]);
+
+	/* Get our EventInfo struct. */
+	info = (RelationDrop_EventInfo *)GetCurrentEvent("relation_drop");
+
+	/* Form and return the tuple. */
+	result[0] = ObjectIdGetDatum(info->relation);
+	result[1] = HeapTupleGetDatum(info->old);
+	result_isnull[0] = false;
+	result_isnull[1] = false;
+	tuple = heap_form_tuple(tupdesc, result, result_isnull);
+	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
 }
 
 

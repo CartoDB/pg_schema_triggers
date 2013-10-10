@@ -25,6 +25,17 @@ CREATE FUNCTION get_relation_alter_eventinfo()
 	AS 'pg_schema_triggers', 'relation_alter_eventinfo';
 
 
+-- Info for relation_drop event.
+CREATE TYPE relation_drop_eventinfo AS (
+	old_relation_oid REGCLASS,
+	old				PG_CATALOG.PG_CLASS
+);
+CREATE FUNCTION get_relation_drop_eventinfo()
+	RETURNS relation_drop_eventinfo
+	LANGUAGE C
+	AS 'pg_schema_triggers', 'relation_drop_eventinfo';
+
+
 -- Info for column_add event.
 CREATE TYPE column_add_eventinfo AS (
 	relation		REGCLASS,

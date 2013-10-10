@@ -7,6 +7,7 @@
 
 
 #include "postgres.h"
+#include "catalog/dependency.h"
 #include "catalog/objectaccess.h"
 #include "catalog/pg_class.h"
 #include "utils/builtins.h"
@@ -141,6 +142,9 @@ on_alter(Oid classId, Oid objectId, int subId, ObjectAccessPostAlter *args)
 static void
 on_drop(Oid classId, Oid objectId, int subId, ObjectAccessDrop *args)
 {
+	if (args->dropflags & PERFORM_DELETION_INTERNAL)
+		return;
+
 	switch (classId)
 	{
 		case RelationRelationId:

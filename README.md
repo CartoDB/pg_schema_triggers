@@ -48,7 +48,15 @@ the CREATE EVENT TRIGGER command.
                               new			PG_CATALOG.PG_CLASS
 
 
-    relation_drop         (Not yet implemented.)
+    relation_drop         An existing relation has been dropped.  [This event
+    					  corresponds to the OAT_DROP hook.]
+
+                          From the event trigger function, calling the
+                          get_relation_drop_eventinfo() function will return
+                          a RELATION_DROP_EVENTINFO record: 
+
+                              old_relation_oid REGCLASS
+                              old			PG_CATALOG.PG_CLASS
 
 
     column_add            A new column has been added to a relation.  Note,

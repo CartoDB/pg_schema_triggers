@@ -129,6 +129,7 @@ struct event supported_events[] = {
 	{"column_drop"},
 	{"relation_create"},
 	{"relation_alter"},
+	{"relation_drop"},
 
 	/* end of list marker */
 	{NULL}
