@@ -38,5 +38,11 @@ ALTER EVENT TRIGGER two DISABLE;
 CREATE TABLE foobar();
 ALTER TABLE foobar ADD COLUMN a TEXT;
 DROP TABLE foobar;
+
+-- Try to drop the raise_notice() function, which should fail.
+DROP FUNCTION raise_notice();
 DROP EVENT TRIGGER one;
 DROP EVENT TRIGGER two;
+-- Now try to drop the raise_notice() function again, which should succeed.
+DROP FUNCTION raise_notice();
+DROP EXTENSION pg_schema_triggers;

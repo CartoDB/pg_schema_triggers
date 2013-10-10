@@ -41,5 +41,14 @@ ALTER EVENT TRIGGER two DISABLE;
 CREATE TABLE foobar();
 ALTER TABLE foobar ADD COLUMN a TEXT;
 DROP TABLE foobar;
+-- Try to drop the raise_notice() function, which should fail.
+DROP FUNCTION raise_notice();
+ERROR:  cannot drop function raise_notice() because other objects depend on it
+DETAIL:  event trigger one depends on function raise_notice()
+event trigger two depends on function raise_notice()
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
 DROP EVENT TRIGGER one;
 DROP EVENT TRIGGER two;
+-- Now try to drop the raise_notice() function again, which should succeed.
+DROP FUNCTION raise_notice();
+DROP EXTENSION pg_schema_triggers;
