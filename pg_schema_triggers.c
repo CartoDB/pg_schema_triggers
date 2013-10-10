@@ -182,7 +182,7 @@ objectaccess_hook(ObjectAccessType access,
 				}
 				else if (classId == RelationRelationId && subId != 0)
 				{
-					//column_alter_event(&object, attnum);
+					column_alter_event(&object, subId);
 				}
 			}
 			break;
@@ -210,6 +210,7 @@ struct event {
 };
 
 struct event supported_events[] = {
+	{"column_alter"},
 	{"relation_create"},
 	{"relation_alter"},
 

@@ -23,3 +23,16 @@ CREATE FUNCTION get_relation_alter_eventinfo()
 	RETURNS relation_alter_eventinfo
 	LANGUAGE C
 	AS 'pg_schema_triggers', 'relation_alter_eventinfo';
+
+
+-- Info for column_alter event.
+CREATE TYPE column_alter_eventinfo AS (
+	relation		REGCLASS,
+	attnum			INT2,
+	old				PG_CATALOG.PG_ATTRIBUTE,
+	new				PG_CATALOG.PG_ATTRIBUTE
+);
+CREATE FUNCTION get_column_alter_eventinfo()
+	RETURNS column_alter_eventinfo
+	LANGUAGE C
+	AS 'pg_schema_triggers', 'column_alter_eventinfo';

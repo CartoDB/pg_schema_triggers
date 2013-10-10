@@ -163,3 +163,77 @@ relation_alter_eventinfo(PG_FUNCTION_ARGS)
 	tuple = heap_form_tuple(tupdesc, result, result_isnull);
 	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
 }
+
+
+/*** Event:  column_alter ***/
+
+
+typedef struct ColumnAlter_EventInfo {
+	EventInfo header;
+	Oid relation;
+	int16 attnum;
+	HeapTuple old;
+	HeapTuple new;
+} ColumnAlter_EventInfo;
+
+
+void
+column_alter_event(ObjectAddress *rel, int16 attnum)
+{
+	ColumnAlter_EventInfo *info;
+	Assert(rel->classId == RelationRelationId);
+	Assert(attnum > 0);
+
+	/* Set up the event info and save the old and new pg_attr rows. */
+	EnterEventMemoryContext();
+	info = (ColumnAlter_EventInfo *)EventInfoAlloc("column_alter", sizeof(*info));
+	info->relation = rel->objectId;
+	info->attnum = attnum;
+	info->old = pgattribute_fetch_tuple(rel->objectId, attnum, SnapshotNow);
+	info->new = pgattribute_fetch_tuple(rel->objectId, attnum, SnapshotSelf);
+	LeaveEventMemoryContext();
+	if (!HeapTupleIsValid(info->old))
+		elog(ERROR, "couldn't find old pg_attr row for oid,attnum=(%u,%d)", rel->objectId, attnum);
+	if (!HeapTupleIsValid(info->new))
+		elog(ERROR, "couldn't find new pg_attr row for oid,attnum=(%u,%d)", rel->objectId, attnum);
+
+	/* Enqueue the event. */
+	EnqueueEvent((EventInfo*) info);
+}
+
+
+PG_FUNCTION_INFO_V1(column_alter_eventinfo);
+Datum
+column_alter_eventinfo(PG_FUNCTION_ARGS)
+{
+	ColumnAlter_EventInfo *info;
+	TupleDesc tupdesc;
+	Datum result[4];
+	bool result_isnull[4];
+	HeapTuple tuple;
+	
+	/* Get the tupdesc for our return type. */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("function returning record called in context "
+				        "that cannot accept type record")));
+	BlessTupleDesc(tupdesc);
+	Assert(tupdesc->natts == sizeof result / sizeof result[0]);
+	Assert(tupdesc->natts == sizeof result_isnull / sizeof result_isnull[0]);
+
+	/* Get our EventInfo struct. */
+	info = (ColumnAlter_EventInfo *)GetCurrentEvent("column_alter");
+
+	/* Form and return the tuple. */
+	result[0] = ObjectIdGetDatum(info->relation);
+	result[1] = Int16GetDatum(info->attnum);
+	result[2] = HeapTupleGetDatum(info->old);
+	result[3] = HeapTupleGetDatum(info->new);
+	result_isnull[0] = false;
+	result_isnull[1] = false;
+	result_isnull[2] = false;
+	result_isnull[3] = false;
+	tuple = heap_form_tuple(tupdesc, result, result_isnull);
+	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
+}

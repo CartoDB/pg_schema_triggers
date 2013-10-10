@@ -14,6 +14,7 @@
 #include "access/sysattr.h"
 #include "access/xact.h"
 #include "catalog/indexing.h"
+#include "catalog/pg_attribute.h"
 #include "catalog/pg_class.h"
 #include "utils/lsyscache.h"
 
@@ -21,27 +22,67 @@
 #include "catalog_funcs.h"
 
 
-/*
- * Fetch a tuple from a system catalog by Oid.  The returned HeapTuple is
- * suitable for use with HeapTupleGetDatum(), and must be freed by calling
- * heap_freetuple().
- */
+HeapTuple catalog_fetch_tuple(Oid relation,
+							  Oid index,
+							  ScanKeyData *keys,
+							  int num_keys,
+							  Snapshot snapshot);
+
+
 HeapTuple
-catalog_fetch_tuple(Oid relation, Oid index, Oid row, Snapshot snapshot)
+pgclass_fetch_tuple(Oid reloid, Snapshot snapshot)
 {
-    Relation	reldesc;
-    SysScanDesc	relscan;
-    ScanKeyData	key[1];
-    HeapTuple	reltuple;
-    Oid			reltypeid;
-	
+	Oid relation = RelationRelationId;
+	Oid index = ClassOidIndexId;
+	ScanKeyData keys[1];
+
 	/* Scan key is an Oid. */
-	ScanKeyInit(&key[0],
+	ScanKeyInit(&keys[0],
 				ObjectIdAttributeNumber,
 				BTEqualStrategyNumber,
 				184,		/* F_OIDEQ (from backend/utils/fmgroids.h) */
-				ObjectIdGetDatum(row));
+				ObjectIdGetDatum(reloid));
 
+	return catalog_fetch_tuple(relation, index, keys, 1, snapshot);
+}
+
+
+HeapTuple
+pgattribute_fetch_tuple(Oid reloid, int16 attnum, Snapshot snapshot)
+{
+	Oid relation = AttributeRelationId;
+	Oid index = AttributeRelidNumIndexId;
+	ScanKeyData keys[2];
+
+	ScanKeyInit(&keys[0],
+				Anum_pg_attribute_attrelid,
+				BTEqualStrategyNumber,
+				184,		/* F_OIDEQ */
+				ObjectIdGetDatum(reloid));
+
+	ScanKeyInit(&keys[1],
+				Anum_pg_attribute_attnum,
+				BTEqualStrategyNumber,
+				63,			/* F_INT2EQ */
+				Int16GetDatum(attnum));
+				
+	return catalog_fetch_tuple(relation, index, keys, 2, snapshot);
+}
+
+
+/*
+ * Fetch a tuple from a system catalog given a suitable scan key.  The returned
+ * HeapTuple is suitable for use with HeapTupleGetDatum(), and must be freed by
+ * calling heap_freetuple().
+ */
+HeapTuple
+catalog_fetch_tuple(Oid relation, Oid index, ScanKeyData *keys, int num_keys, Snapshot snapshot)
+{
+    Relation	reldesc;
+    SysScanDesc	relscan;
+    HeapTuple	reltuple;
+    Oid			reltypeid;
+	
 	/* Get the Oid of the relation's rowtype. */
 	reltypeid = get_rel_type_id(relation);
 	if (reltypeid == InvalidOid)
@@ -53,7 +94,7 @@ catalog_fetch_tuple(Oid relation, Oid index, Oid row, Snapshot snapshot)
 								 index,
 								 true,
 								 snapshot,
-								 1, key);
+								 num_keys, keys);
 	reltuple = systable_getnext(relscan);
 
 	/* Copy the tuple. */
@@ -71,11 +112,4 @@ finish:
 	systable_endscan(relscan);
 	heap_close(reldesc, AccessShareLock);
 	return reltuple;
-}
-
-
-HeapTuple
-pgclass_fetch_tuple(Oid row, Snapshot snapshot)
-{
-	return catalog_fetch_tuple(RelationRelationId, ClassOidIndexId, row, snapshot);
 }
