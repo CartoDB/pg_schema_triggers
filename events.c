@@ -162,6 +162,23 @@ relation_alter_eventinfo(PG_FUNCTION_ARGS)
 }
 
 
+/*** Event:  relation_drop ***/
+
+
+void
+relation_drop_event(Oid rel)
+{
+}
+
+
+PG_FUNCTION_INFO_V1(relation_drop_eventinfo);
+Datum
+relation_drop_eventinfo(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_NULL();
+}
+
+
 /*** Event:  column_add ***/
 
 

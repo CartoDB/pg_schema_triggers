@@ -48,6 +48,9 @@ the CREATE EVENT TRIGGER command.
                               new			PG_CATALOG.PG_CLASS
 
 
+    relation_drop         (Not yet implemented.)
+
+
     column_add            A new column has been added to a relation.  Note,
                           this will only be called for columns added *after*
                           a relation is first created.
