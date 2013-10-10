@@ -239,7 +239,6 @@ void
 column_add_event(Oid rel, int16 attnum)
 {
 	ColumnAdd_EventInfo *info;
-	Assert(attnum > 0);
 
 	/* Set up the event info and save the new pg_attr row. */
 	EnterEventMemoryContext();
@@ -307,7 +306,6 @@ void
 column_alter_event(Oid rel, int16 attnum)
 {
 	ColumnAlter_EventInfo *info;
-	Assert(attnum > 0);
 
 	/* Set up the event info and save the old and new pg_attr rows. */
 	EnterEventMemoryContext();
@@ -379,7 +377,6 @@ void
 column_drop_event(Oid rel, int16 attnum)
 {
 	ColumnDrop_EventInfo *info;
-	Assert(attnum > 0);
 
 	/* Set up the event info and save the old and new pg_attr rows. */
 	EnterEventMemoryContext();

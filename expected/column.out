@@ -74,6 +74,9 @@ CREATE TABLE baz(a INTEGER PRIMARY KEY, b TEXT, c BOOLEAN);
 ALTER TABLE baz DROP COLUMN c;
 NOTICE:  on_column_drop(baz, 3)
 NOTICE:    old.attname='c', old.atttypid=16, old.attnotnull='f'
+ALTER TABLE baz SET WITH OIDS;
+NOTICE:  on_column_add(baz, -2)
+NOTICE:    new.attname='oid', new.atttypid=26, new.attnotnull='t'
 ALTER TABLE baz ALTER COLUMN b SET NOT NULL;
 NOTICE:  on_column_alter(baz, 2)
 NOTICE:    old.attname='b', old.atttypid=25, old.attnotnull='f'
@@ -82,6 +85,9 @@ ALTER TABLE baz RENAME COLUMN a TO aaa;
 NOTICE:  on_column_alter(baz, 1)
 NOTICE:    old.attname='a', old.atttypid=23, old.attnotnull='t'
 NOTICE:    new.attname='aaa', new.atttypid=23, new.attnotnull='t'
+ALTER TABLE baz SET WITHOUT OIDS;
+NOTICE:  on_column_drop(baz, -2)
+NOTICE:    old.attname='oid', old.atttypid=26, old.attnotnull='t'
 DROP TABLE baz;
 CREATE TABLE xyzzy(abc INTEGER, def INTEGER, ghi INTEGER);
 ALTER TABLE xyzzy
