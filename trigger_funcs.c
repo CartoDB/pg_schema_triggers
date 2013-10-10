@@ -394,7 +394,7 @@ find_event_triggers_for_event(const char *eventname)
         /* Check event name.  XXX:  we ignore evttags[] entirely. */
         evtevent = NameStr(form->evtevent);
         if (strcmp(evtevent, eventname) != 0)
-        	break;
+        	continue;
 
         /* Event trigger matches.  Add evtfoid to our list. */
 		funclist = lappend_oid(funclist, form->evtfoid);
