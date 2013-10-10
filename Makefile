@@ -1,7 +1,7 @@
 # pg_schema_triggers/Makefile
 
 MODULE_big = pg_schema_triggers
-OBJS = catalog_funcs.o events.o trigger_funcs.o pg_schema_triggers.o
+OBJS = catalog_funcs.o events.o hook_objacc.o trigger_funcs.o pg_schema_triggers.o
 SHLIB_LINK = $(filter -lcrypt, $(LIBS))
 
 EXTENSION = pg_schema_triggers
