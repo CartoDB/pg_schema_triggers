@@ -22,6 +22,8 @@ static void objectaccess_hook(ObjectAccessType access,
 	Oid objectId,
 	int subId,
 	void *arg);
+static void on_create(Oid classId, Oid objectId, int subId, ObjectAccessPostCreate *args);
+static void on_alter(Oid classId, Oid objectId, int subId, ObjectAccessPostAlter *args);
 static void on_drop(Oid classId, Oid objectId, int subId, ObjectAccessDrop *args);
 
 
@@ -74,21 +76,7 @@ objectaccess_hook(ObjectAccessType access,
 	switch (access)
 	{
 		case OAT_POST_CREATE:
-			{
-				ObjectAccessPostCreate *args = (ObjectAccessPostCreate *)arg;
-
-				if (args->is_internal)
-					return;
-
-				if (classId == RelationRelationId && subId == 0)
-				{
-					relation_create_event(objectId);
-				}
-				else if (classId == RelationRelationId && subId != 0)
-				{
-					column_add_event(objectId, subId);
-				}
-			}
+			on_create(classId, objectId, subId, (ObjectAccessPostCreate *)arg);
 			break;
 
 		/*
@@ -99,28 +87,52 @@ objectaccess_hook(ObjectAccessType access,
 		 *   RenameRelationInternal		RelationRelationId	pg_class.oid	0
 		 */
 		case OAT_POST_ALTER:
-			{
-				ObjectAccessPostAlter *args = (ObjectAccessPostAlter *)arg;
-				
-				if (args->is_internal)
-					return;
-
-				if (classId == RelationRelationId && subId == 0)
-				{
-					relation_alter_event(objectId);
-				}
-				else if (classId == RelationRelationId && subId != 0)
-				{
-					column_alter_event(objectId, subId);
-				}
-			}
+			on_alter(classId, objectId, subId, (ObjectAccessPostAlter *)arg);
 			break;
+
 		case OAT_DROP:
 			on_drop(classId, objectId, subId, (ObjectAccessDrop *)arg);
 			break;
+
 		case OAT_NAMESPACE_SEARCH:
 		case OAT_FUNCTION_EXECUTE:
 			/* Ignore these events. */
+			break;
+	}
+}
+
+
+static void
+on_create(Oid classId, Oid objectId, int subId, ObjectAccessPostCreate *args)
+{
+	if (args->is_internal)
+		return;
+
+	switch (classId)
+	{
+		case RelationRelationId:
+			if (subId == 0)
+				relation_create_event(objectId);
+			else
+				column_add_event(objectId, subId);
+			break;
+	}
+}
+
+
+static void
+on_alter(Oid classId, Oid objectId, int subId, ObjectAccessPostAlter *args)
+{
+	if (args->is_internal)
+		return;
+
+	switch (classId)
+	{
+		case RelationRelationId:
+			if (subId == 0)
+				relation_alter_event(objectId);
+			else
+				column_alter_event(objectId, subId);
 			break;
 	}
 }
