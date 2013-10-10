@@ -31,5 +31,8 @@ Datum column_add_eventinfo(PG_FUNCTION_ARGS);
 void column_alter_event(Oid rel, int16 attnum);
 Datum column_alter_eventinfo(PG_FUNCTION_ARGS);
 
+void column_drop_event(Oid rel, int16 attnum);
+Datum column_drop_eventinfo(PG_FUNCTION_ARGS);
+
 
 #endif	/* SCHEMA_TRIGGERS_EVENTS_H */

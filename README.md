@@ -77,11 +77,15 @@ the CREATE EVENT TRIGGER command.
                               new			PG_CATALOG.PG_ATTRIBUTE
 
 
-The following events are planned, but have not yet been implemented:
+    column_drop           An existing column has been dropped.
 
-    relation_drop         ...
-    column_drop           ALTER TABLE ... DROP COLUMN ...
-    column_rename         ALTER TABLE ... RENAME COLUMN ... TO ...
+                          From the event trigger function, calling the
+                          get_column_drop_eventinfo() function will return
+                          a COLUMN_DROP_EVENTINFO record: 
+
+                              relation      REGCLASS
+                              attnum		INT16
+                              old			PG_CATALOG.PG_ATTRIBUTE
 
 
 Examples

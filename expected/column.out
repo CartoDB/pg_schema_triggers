@@ -33,6 +33,22 @@ CREATE OR REPLACE FUNCTION on_column_alter()
  $$;
 CREATE EVENT TRIGGER colalter ON column_alter
 	EXECUTE PROCEDURE on_column_alter();
+-- Create an event trigger for the column_drop event.
+CREATE OR REPLACE FUNCTION on_column_drop()
+ RETURNS event_trigger
+ LANGUAGE plpgsql
+ AS $$
+	DECLARE
+		event_info SCHEMA_TRIGGERS.COLUMN_DROP_EVENTINFO;
+	BEGIN
+		event_info := schema_triggers.get_column_drop_eventinfo();
+		RAISE NOTICE 'on_column_drop(%, %)', event_info.relation, event_info.attnum;
+		RAISE NOTICE '  old.attname=''%'', old.atttypid=%, old.attnotnull=''%''',
+	 		(event_info.old).attname, (event_info.old).atttypid, (event_info.old).attnotnull;
+	END;
+ $$;
+CREATE EVENT TRIGGER coldrop ON column_drop
+	EXECUTE PROCEDURE on_column_drop();
 -- Create some tables, and then alter their columns.
 CREATE TABLE foobar();
 ALTER TABLE foobar ADD COLUMN x TEXT NOT NULL;
@@ -50,9 +66,14 @@ ALTER TABLE foobar ALTER COLUMN xxx TYPE BOOLEAN USING (FALSE);
 NOTICE:  on_column_alter(foobar, 1)
 NOTICE:    old.attname='xxx', old.atttypid=25, old.attnotnull='f'
 NOTICE:    new.attname='xxx', new.atttypid=16, new.attnotnull='f'
+ALTER TABLE foobar DROP COLUMN xxx;
+NOTICE:  on_column_drop(foobar, 1)
+NOTICE:    old.attname='xxx', old.atttypid=16, old.attnotnull='f'
 DROP TABLE foobar;
 CREATE TABLE baz(a INTEGER PRIMARY KEY, b TEXT, c BOOLEAN);
 ALTER TABLE baz DROP COLUMN c;
+NOTICE:  on_column_drop(baz, 3)
+NOTICE:    old.attname='c', old.atttypid=16, old.attnotnull='f'
 ALTER TABLE baz ALTER COLUMN b SET NOT NULL;
 NOTICE:  on_column_alter(baz, 2)
 NOTICE:    old.attname='b', old.atttypid=25, old.attnotnull='f'
@@ -66,7 +87,10 @@ CREATE TABLE xyzzy(abc INTEGER, def INTEGER, ghi INTEGER);
 ALTER TABLE xyzzy
 	ALTER COLUMN abc TYPE TEXT,
 	ADD COLUMN jkl BOOLEAN NOT NULL,
+	DROP COLUMN def,
 	ALTER COLUMN ghi SET NOT NULL;
+NOTICE:  on_column_drop(xyzzy, 2)
+NOTICE:    old.attname='def', old.atttypid=23, old.attnotnull='f'
 NOTICE:  on_column_alter(xyzzy, 1)
 NOTICE:    old.attname='abc', old.atttypid=23, old.attnotnull='f'
 NOTICE:    new.attname='abc', new.atttypid=25, new.attnotnull='f'
@@ -77,6 +101,10 @@ NOTICE:    old.attname='ghi', old.atttypid=23, old.attnotnull='f'
 NOTICE:    new.attname='ghi', new.atttypid=23, new.attnotnull='t'
 DROP TABLE xyzzy;
 -- Clean up the event trigger.
+DROP EVENT TRIGGER coladd;
 DROP EVENT TRIGGER colalter;
+DROP EVENT TRIGGER coldrop;
+DROP FUNCTION on_column_add();
 DROP FUNCTION on_column_alter();
+DROP FUNCTION on_column_drop();
 DROP EXTENSION pg_schema_triggers;

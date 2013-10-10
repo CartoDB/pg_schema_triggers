@@ -22,6 +22,7 @@ static void objectaccess_hook(ObjectAccessType access,
 	Oid objectId,
 	int subId,
 	void *arg);
+static void on_drop(Oid classId, Oid objectId, int subId, ObjectAccessDrop *args);
 
 
 /*
@@ -115,15 +116,26 @@ objectaccess_hook(ObjectAccessType access,
 			}
 			break;
 		case OAT_DROP:
-			{
-				//ObjectAccessDrop *args = (ObjectAccessDrop *)arg;
-				//
-				//object_drop(&object, args->dropflags);
-			}
+			on_drop(classId, objectId, subId, (ObjectAccessDrop *)arg);
 			break;
 		case OAT_NAMESPACE_SEARCH:
 		case OAT_FUNCTION_EXECUTE:
 			/* Ignore these events. */
+			break;
+	}
+}
+
+
+static void
+on_drop(Oid classId, Oid objectId, int subId, ObjectAccessDrop *args)
+{
+	switch (classId)
+	{
+		case RelationRelationId:
+			if (subId == 0)
+				relation_drop_event(objectId);
+			else
+				column_drop_event(objectId, subId);
 			break;
 	}
 }

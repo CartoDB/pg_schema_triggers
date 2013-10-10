@@ -48,3 +48,15 @@ CREATE FUNCTION get_column_alter_eventinfo()
 	RETURNS column_alter_eventinfo
 	LANGUAGE C
 	AS 'pg_schema_triggers', 'column_alter_eventinfo';
+
+
+-- Info for column_drop event.
+CREATE TYPE column_drop_eventinfo AS (
+	relation		REGCLASS,
+	attnum			INT2,
+	old				PG_CATALOG.PG_ATTRIBUTE
+);
+CREATE FUNCTION get_column_drop_eventinfo()
+	RETURNS column_drop_eventinfo
+	LANGUAGE C
+	AS 'pg_schema_triggers', 'column_drop_eventinfo';

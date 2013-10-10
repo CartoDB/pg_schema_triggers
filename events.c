@@ -317,3 +317,70 @@ column_alter_eventinfo(PG_FUNCTION_ARGS)
 	tuple = heap_form_tuple(tupdesc, result, result_isnull);
 	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
 }
+
+
+/*** Event:  column_drop ***/
+
+
+typedef struct ColumnDrop_EventInfo {
+	EventInfo header;
+	Oid relation;
+	int16 attnum;
+	HeapTuple old;
+} ColumnDrop_EventInfo;
+
+
+void
+column_drop_event(Oid rel, int16 attnum)
+{
+	ColumnDrop_EventInfo *info;
+	Assert(attnum > 0);
+
+	/* Set up the event info and save the old and new pg_attr rows. */
+	EnterEventMemoryContext();
+	info = (ColumnDrop_EventInfo *)EventInfoAlloc("column_drop", sizeof(*info));
+	info->relation = rel;
+	info->attnum = attnum;
+	info->old = pgattribute_fetch_tuple(rel, attnum, SnapshotNow);
+	LeaveEventMemoryContext();
+	if (!HeapTupleIsValid(info->old))
+		elog(ERROR, "couldn't find old pg_attribute row for oid,attnum=(%u,%d)", rel, attnum);
+
+	/* Enqueue the event. */
+	EnqueueEvent((EventInfo*) info);
+}
+
+
+PG_FUNCTION_INFO_V1(column_drop_eventinfo);
+Datum
+column_drop_eventinfo(PG_FUNCTION_ARGS)
+{
+	ColumnDrop_EventInfo *info;
+	TupleDesc tupdesc;
+	Datum result[3];
+	bool result_isnull[3];
+	HeapTuple tuple;
+	
+	/* Get the tupdesc for our return type. */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("function returning record called in context "
+				        "that cannot accept type record")));
+	BlessTupleDesc(tupdesc);
+	Assert(tupdesc->natts == sizeof result / sizeof result[0]);
+	Assert(tupdesc->natts == sizeof result_isnull / sizeof result_isnull[0]);
+
+	/* Get our EventInfo struct. */
+	info = (ColumnDrop_EventInfo *)GetCurrentEvent("column_drop");
+
+	/* Form and return the tuple. */
+	result[0] = ObjectIdGetDatum(info->relation);
+	result[1] = Int16GetDatum(info->attnum);
+	result[2] = HeapTupleGetDatum(info->old);
+	result_isnull[0] = false;
+	result_isnull[1] = false;
+	result_isnull[2] = false;
+	tuple = heap_form_tuple(tupdesc, result, result_isnull);
+	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
+}
