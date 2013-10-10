@@ -7,7 +7,7 @@ SHLIB_LINK = $(filter -lcrypt, $(LIBS))
 EXTENSION = pg_schema_triggers
 DATA = pg_schema_triggers--0.1.sql
 DOCS = README.md
-#REGRESS = test_schema_triggers
+REGRESS = event_trigger
 
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
