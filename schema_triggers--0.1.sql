@@ -10,7 +10,7 @@ CREATE TYPE relation_create_eventinfo AS (
 CREATE FUNCTION get_relation_create_eventinfo()
 	RETURNS relation_create_eventinfo
 	LANGUAGE C
-	AS 'pg_schema_triggers', 'relation_create_eventinfo';
+	AS 'schema_triggers', 'relation_create_eventinfo';
 
 
 -- Info for relation_alter event.
@@ -22,7 +22,7 @@ CREATE TYPE relation_alter_eventinfo AS (
 CREATE FUNCTION get_relation_alter_eventinfo()
 	RETURNS relation_alter_eventinfo
 	LANGUAGE C
-	AS 'pg_schema_triggers', 'relation_alter_eventinfo';
+	AS 'schema_triggers', 'relation_alter_eventinfo';
 
 
 -- Info for relation_drop event.
@@ -33,7 +33,7 @@ CREATE TYPE relation_drop_eventinfo AS (
 CREATE FUNCTION get_relation_drop_eventinfo()
 	RETURNS relation_drop_eventinfo
 	LANGUAGE C
-	AS 'pg_schema_triggers', 'relation_drop_eventinfo';
+	AS 'schema_triggers', 'relation_drop_eventinfo';
 
 
 -- Info for column_add event.
@@ -45,7 +45,7 @@ CREATE TYPE column_add_eventinfo AS (
 CREATE FUNCTION get_column_add_eventinfo()
 	RETURNS column_add_eventinfo
 	LANGUAGE C
-	AS 'pg_schema_triggers', 'column_add_eventinfo';
+	AS 'schema_triggers', 'column_add_eventinfo';
 
 
 -- Info for column_alter event.
@@ -58,7 +58,7 @@ CREATE TYPE column_alter_eventinfo AS (
 CREATE FUNCTION get_column_alter_eventinfo()
 	RETURNS column_alter_eventinfo
 	LANGUAGE C
-	AS 'pg_schema_triggers', 'column_alter_eventinfo';
+	AS 'schema_triggers', 'column_alter_eventinfo';
 
 
 -- Info for column_drop event.
@@ -70,4 +70,4 @@ CREATE TYPE column_drop_eventinfo AS (
 CREATE FUNCTION get_column_drop_eventinfo()
 	RETURNS column_drop_eventinfo
 	LANGUAGE C
-	AS 'pg_schema_triggers', 'column_drop_eventinfo';
+	AS 'schema_triggers', 'column_drop_eventinfo';

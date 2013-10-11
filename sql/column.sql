@@ -1,4 +1,4 @@
-CREATE EXTENSION pg_schema_triggers;
+CREATE EXTENSION schema_triggers;
 
 -- Create an event trigger for the column_add event.
 CREATE OR REPLACE FUNCTION on_column_add()
@@ -85,4 +85,4 @@ DROP EVENT TRIGGER coldrop;
 DROP FUNCTION on_column_add();
 DROP FUNCTION on_column_alter();
 DROP FUNCTION on_column_drop();
-DROP EXTENSION pg_schema_triggers;
+DROP EXTENSION schema_triggers;

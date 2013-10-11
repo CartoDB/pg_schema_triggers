@@ -3,7 +3,7 @@
  * change events for the CREATE EVENT TRIGGER functionality.
  *
  *
- * pg_schema_triggers/pg_schema_triggers.c
+ * pg_schema_triggers/init.c
  */
 
 

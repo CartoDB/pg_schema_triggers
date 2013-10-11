@@ -140,19 +140,19 @@ To build, install, and test:
 To enable this extension for a database, ensure that the extension has been
 installed (`make install`) and then use the CREATE EXTENSION mechanism:
 
-    CREATE EXTENSION pg_schema_triggers;
+    CREATE EXTENSION schema_triggers;
 
 In order for the extension to work (that is, for CREATE EVENT TRIGGER to
 recognize the new events and for the event triggers to be fired upon those
 events happening) the `pg_schema_triggers.so` library must be loaded.  Add
 a line to `postgresql.conf`:
 
-    shared_preload_libraries = pg_schema_triggers.so
+    shared_preload_libraries = schema_triggers.so
 
 Alternately, the new events can be enabled during a single session with the
 LOAD command.  This is unlikely to be useful except during testing:
 
-    LOAD 'pg_schema_triggers.so';
+    LOAD 'schema_triggers.so';
 
 
 Authors and Credits

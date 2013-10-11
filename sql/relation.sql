@@ -1,4 +1,4 @@
-CREATE EXTENSION pg_schema_triggers;
+CREATE EXTENSION schema_triggers;
 
 -- Create an event trigger for the relation_create event.
 CREATE FUNCTION on_relation_create()
@@ -87,4 +87,4 @@ DROP EVENT TRIGGER reldrop;
 DROP FUNCTION on_relation_create();
 DROP FUNCTION on_relation_alter();
 DROP FUNCTION on_relation_drop();
-DROP EXTENSION pg_schema_triggers;
+DROP EXTENSION schema_triggers;

@@ -4,7 +4,7 @@
 -- extension.
 CREATE EVENT TRIGGER wont_work ON relation_create
 	EXECUTE PROCEDURE foo();
-CREATE EXTENSION pg_schema_triggers;
+CREATE EXTENSION schema_triggers;
 
 -- Exercise the various cases that shouldn't work.
 CREATE EVENT TRIGGER wont_work ON phase_of_the_moon
@@ -45,4 +45,4 @@ DROP EVENT TRIGGER one;
 DROP EVENT TRIGGER two;
 -- Now try to drop the raise_notice() function again, which should succeed.
 DROP FUNCTION raise_notice();
-DROP EXTENSION pg_schema_triggers;
+DROP EXTENSION schema_triggers;
