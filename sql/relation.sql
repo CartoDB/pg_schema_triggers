@@ -80,6 +80,15 @@ DROP TABLE foobar_two;
 DROP TABLE IF EXISTS test_foobar;  -- (it shouldn't exist...)
 DROP TABLE baz;
 
+-- Create multiple tables with a single DDL statement.
+CREATE SCHEMA multi_table
+	CREATE TABLE table1 (a INTEGER, b TEXT)
+	CREATE TABLE table2 (c BOOLEAN)
+	CREATE TABLE table3 (d DATE);
+
+-- ...and then drop them all, again with a single DDL statement.
+DROP SCHEMA multi_table CASCADE;
+
 -- Clean up the event trigger.
 DROP EVENT TRIGGER relcreate;
 DROP EVENT TRIGGER relalter;
