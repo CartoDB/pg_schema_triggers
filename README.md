@@ -95,6 +95,17 @@ the CREATE EVENT TRIGGER command.
                               old			PG_CATALOG.PG_ATTRIBUTE
 
 
+    trigger_create        A new trigger has been created.
+
+                          From the event trigger function, calling the
+                          get_trigger_create_eventinfo() function will return
+                          a TRIGGER_CREATE_EVENTINFO record: 
+
+                              trigoid       OID
+                              is_internal   BOOLEAN
+                              new			PG_CATALOG.PG_TRIGGER
+
+
 Examples
 --------
 This example issues a NOTICE whenever a table is created with a name that

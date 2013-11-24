@@ -17,6 +17,7 @@
 #include "access/xact.h"
 #include "catalog/objectaccess.h"
 #include "catalog/pg_class.h"
+#include "catalog/pg_trigger.h"
 #include "catalog/pg_type.h"
 #include "parser/parse_func.h"
 #include "storage/itemptr.h"
@@ -425,4 +426,106 @@ column_drop_eventinfo(PG_FUNCTION_ARGS)
 	result_isnull[2] = false;
 	tuple = heap_form_tuple(tupdesc, result, result_isnull);
 	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
+}
+
+
+/*** Event:  trigger_create ***/
+
+
+typedef struct TriggerCreate_EventInfo {
+	EventInfo header;
+	Oid trigger_oid;
+	bool is_internal;
+	HeapTuple new;
+} TriggerCreate_EventInfo;
+
+
+void
+trigger_create_event(Oid trigoid, bool is_internal)
+{
+	TriggerCreate_EventInfo *info;
+
+	/* Set up the event info. */
+	EnterEventMemoryContext();
+	info = (TriggerCreate_EventInfo *)EventInfoAlloc("trigger_create", sizeof(*info));
+	info->trigger_oid = trigoid;
+	info->is_internal = is_internal;
+	info->new = pgtrigger_fetch_tuple(trigoid, SnapshotSelf);
+	LeaveEventMemoryContext();
+	if (!HeapTupleIsValid(info->new))
+		elog(ERROR, "couldn't find new pg_trigger row for oid=(%u)", trigoid);
+
+	/* Enqueue the event. */
+	EnqueueEvent((EventInfo*) info);
+}
+
+
+PG_FUNCTION_INFO_V1(trigger_create_eventinfo);
+Datum
+trigger_create_eventinfo(PG_FUNCTION_ARGS)
+{
+	TriggerCreate_EventInfo *info;
+	TupleDesc tupdesc;
+	Datum result[3];
+	bool result_isnull[3];
+	HeapTuple tuple;
+	
+	/* Get the tupdesc for our return type. */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("function returning record called in context "
+				        "that cannot accept type record")));
+	BlessTupleDesc(tupdesc);
+	Assert(tupdesc->natts == sizeof result / sizeof result[0]);
+	Assert(tupdesc->natts == sizeof result_isnull / sizeof result_isnull[0]);
+
+	/* Get our EventInfo struct. */
+	info = (TriggerCreate_EventInfo *)GetCurrentEvent("trigger_create");
+
+	/* Form and return the tuple. */
+	result[0] = ObjectIdGetDatum(info->trigger_oid);
+	result[1] = BoolGetDatum(info->is_internal);
+	result[2] = HeapTupleGetDatum(info->new);
+	result_isnull[0] = false;
+	result_isnull[1] = false;
+	result_isnull[2] = false;
+	tuple = heap_form_tuple(tupdesc, result, result_isnull);
+	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
+}
+
+
+/*** Event:  trigger_adjust and trigger_rename ***/
+
+
+typedef struct TriggerAdjust_EventInfo {
+	EventInfo header;
+	Oid trigger_oid;
+	char old_enabled;
+	char new_enabled;
+} TriggerAdjust_EventInfo;
+
+
+typedef struct TriggerRename_EventInfo {
+	EventInfo header;
+	Oid trigger_oid;
+	Name old_name;
+	Name new_name;
+} TriggerRename_EventInfo;
+
+
+void 
+trigger_alter_event(Oid trigoid)
+{
+	return;
+}
+
+
+/*** Event:  trigger_drop ***/
+
+
+void
+trigger_drop_event(Oid trigoid)
+{
+	return;
 }

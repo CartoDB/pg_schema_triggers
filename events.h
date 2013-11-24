@@ -34,5 +34,12 @@ Datum column_alter_eventinfo(PG_FUNCTION_ARGS);
 void column_drop_event(Oid rel, int16 attnum);
 Datum column_drop_eventinfo(PG_FUNCTION_ARGS);
 
+void trigger_create_event(Oid trigoid, bool is_internal);
+Datum trigger_create_eventinfo(PG_FUNCTION_ARGS);
+
+void trigger_alter_event(Oid trigoid);
+
+void trigger_drop_event(Oid trigoid);
+
 
 #endif	/* SCHEMA_TRIGGERS_EVENTS_H */

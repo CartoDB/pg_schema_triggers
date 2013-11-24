@@ -16,7 +16,16 @@
 #include "catalog/indexing.h"
 #include "catalog/pg_attribute.h"
 #include "catalog/pg_class.h"
+#include "catalog/pg_trigger.h"
 #include "utils/lsyscache.h"
+
+
+/*
+ * F_INT2EQ and F_OIDEQ definitions copied from
+ * backend/utils/fmgroids.h
+ */
+#define F_INT2EQ 63
+#define F_OIDEQ 184
 
 
 #include "catalog_funcs.h"
@@ -40,7 +49,7 @@ pgclass_fetch_tuple(Oid reloid, Snapshot snapshot)
 	ScanKeyInit(&keys[0],
 				ObjectIdAttributeNumber,
 				BTEqualStrategyNumber,
-				184,		/* F_OIDEQ (from backend/utils/fmgroids.h) */
+				F_OIDEQ,
 				ObjectIdGetDatum(reloid));
 
 	return catalog_fetch_tuple(relation, index, keys, 1, snapshot);
@@ -57,16 +66,36 @@ pgattribute_fetch_tuple(Oid reloid, int16 attnum, Snapshot snapshot)
 	ScanKeyInit(&keys[0],
 				Anum_pg_attribute_attrelid,
 				BTEqualStrategyNumber,
-				184,		/* F_OIDEQ */
+				F_OIDEQ,
 				ObjectIdGetDatum(reloid));
 
 	ScanKeyInit(&keys[1],
 				Anum_pg_attribute_attnum,
 				BTEqualStrategyNumber,
-				63,			/* F_INT2EQ */
+				F_INT2EQ,
 				Int16GetDatum(attnum));
 				
 	return catalog_fetch_tuple(relation, index, keys, 2, snapshot);
+}
+
+
+HeapTuple
+pgtrigger_fetch_tuple(Oid trigoid, Snapshot snapshot)
+{
+	Oid relation = TriggerRelationId;
+	Oid index = TriggerOidIndexId;
+	ScanKeyData keys[1];
+
+	/* Scan key is an Oid. */
+	ScanKeyInit(&keys[0],
+				ObjectIdAttributeNumber,
+				BTEqualStrategyNumber,
+				F_OIDEQ,
+				ObjectIdGetDatum(trigoid));
+
+	return catalog_fetch_tuple(relation, index, keys, 1, snapshot);
+
+
 }
 
 

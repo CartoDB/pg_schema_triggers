@@ -130,6 +130,10 @@ struct event supported_events[] = {
 	{"relation_create"},
 	{"relation_alter"},
 	{"relation_drop"},
+	{"trigger_create"},
+	{"trigger_adjust"},
+	{"trigger_rename"},
+	{"trigger_drop"},
 
 	/* end of list marker */
 	{NULL}

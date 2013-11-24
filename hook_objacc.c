@@ -10,6 +10,7 @@
 #include "catalog/dependency.h"
 #include "catalog/objectaccess.h"
 #include "catalog/pg_class.h"
+#include "catalog/pg_trigger.h"
 #include "utils/builtins.h"
 
 #include "events.h"
@@ -117,6 +118,9 @@ on_create(Oid classId, Oid objectId, int subId, ObjectAccessPostCreate *args)
 			else
 				column_add_event(objectId, subId);
 			break;
+		case TriggerRelationId:
+			trigger_create_event(objectId, args->is_internal);
+			break;
 	}
 }
 
@@ -135,6 +139,9 @@ on_alter(Oid classId, Oid objectId, int subId, ObjectAccessPostAlter *args)
 			else
 				column_alter_event(objectId, subId);
 			break;
+		case TriggerRelationId:
+			trigger_alter_event(objectId);
+			break;
 	}
 }
 
@@ -152,6 +159,9 @@ on_drop(Oid classId, Oid objectId, int subId, ObjectAccessDrop *args)
 				relation_drop_event(objectId);
 			else
 				column_drop_event(objectId, subId);
+			break;
+		case TriggerRelationId:
+			trigger_drop_event(objectId);
 			break;
 	}
 }

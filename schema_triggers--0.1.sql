@@ -71,3 +71,15 @@ CREATE FUNCTION get_column_drop_eventinfo()
 	RETURNS column_drop_eventinfo
 	LANGUAGE C
 	AS 'schema_triggers', 'column_drop_eventinfo';
+
+
+-- Info for trigger_create event.
+CREATE TYPE trigger_create_eventinfo AS (
+	trigger_oid		OID,
+	is_internal		BOOLEAN,
+	new				PG_CATALOG.PG_TRIGGER
+);
+CREATE FUNCTION get_trigger_create_eventinfo()
+	RETURNS trigger_create_eventinfo
+	LANGUAGE C
+	AS 'schema_triggers', 'trigger_create_eventinfo';
