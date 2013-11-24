@@ -40,6 +40,7 @@ Datum trigger_create_eventinfo(PG_FUNCTION_ARGS);
 void trigger_alter_event(Oid trigoid);
 
 void trigger_drop_event(Oid trigoid);
+Datum trigger_drop_eventinfo(PG_FUNCTION_ARGS);
 
 
 #endif	/* SCHEMA_TRIGGERS_EVENTS_H */

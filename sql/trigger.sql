@@ -30,6 +30,28 @@ CREATE EVENT TRIGGER trigcreate ON trigger_create
 -- TODO
 
 -- Create an event trigger for the trigger_drop event.
+CREATE FUNCTION on_trigger_drop()
+ RETURNS event_trigger
+ LANGUAGE plpgsql
+ AS $$
+	DECLARE
+		event_info SCHEMA_TRIGGERS.TRIGGER_DROP_EVENTINFO;
+	BEGIN
+		event_info := schema_triggers.get_trigger_drop_eventinfo();
+		IF (event_info.old).tgisinternal IS TRUE THEN
+			-- Internal triggers (e.g. for enforcing foreign keys) include an
+			-- Oid value in their automatically-generated name;  thus we are
+			-- unable to include this in the regression test's output...
+			RAISE NOTICE 'on_trigger_drop: dropping internal trigger.';
+		ELSE
+			RAISE NOTICE 'on_trigger_drop: (tgname=''%'', tgrelid=''%'', tgenabled=''%'')',
+				(event_info.old).tgname, (event_info.old).tgrelid::REGCLASS,
+				(event_info.old).tgenabled;
+		END IF;
+	END;
+$$;
+CREATE EVENT TRIGGER trigdrop ON trigger_drop
+	EXECUTE PROCEDURE on_trigger_drop();
 -- TODO
 
 -- Create some empty tables.
@@ -74,6 +96,8 @@ DROP TABLE baz CASCADE;
 
 -- Clean up.
 DROP EVENT TRIGGER trigcreate;
+DROP EVENT TRIGGER trigdrop;
 DROP FUNCTION on_trigger_create();
+DROP FUNCTION on_trigger_drop();
 DROP FUNCTION ignore();
 DROP EXTENSION schema_triggers;

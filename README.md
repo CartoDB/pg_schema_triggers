@@ -106,6 +106,16 @@ the CREATE EVENT TRIGGER command.
                               new			PG_CATALOG.PG_TRIGGER
 
 
+    trigger_drop          An existing trigger has been dropped.
+
+                          From the event trigger function, calling the
+                          get_trigger_drop_eventinfo() function will return
+                          a TRIGGER_DROP_EVENTINFO record: 
+
+                              trigoid       OID
+                              old			PG_CATALOG.PG_TRIGGER
+
+
 Examples
 --------
 This example issues a NOTICE whenever a table is created with a name that

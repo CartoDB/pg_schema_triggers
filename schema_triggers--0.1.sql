@@ -83,3 +83,14 @@ CREATE FUNCTION get_trigger_create_eventinfo()
 	RETURNS trigger_create_eventinfo
 	LANGUAGE C
 	AS 'schema_triggers', 'trigger_create_eventinfo';
+
+
+-- Info for trigger_drop event.
+CREATE TYPE trigger_drop_eventinfo AS (
+	trigger_oid		OID,
+	old				PG_CATALOG.PG_TRIGGER
+);
+CREATE FUNCTION get_trigger_drop_eventinfo()
+	RETURNS trigger_drop_eventinfo
+	LANGUAGE C
+	AS 'schema_triggers', 'trigger_drop_eventinfo';

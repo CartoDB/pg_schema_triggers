@@ -26,6 +26,28 @@ CREATE EVENT TRIGGER trigcreate ON trigger_create
 -- Create an event trigger for the trigger_rename event.
 -- TODO
 -- Create an event trigger for the trigger_drop event.
+CREATE FUNCTION on_trigger_drop()
+ RETURNS event_trigger
+ LANGUAGE plpgsql
+ AS $$
+	DECLARE
+		event_info SCHEMA_TRIGGERS.TRIGGER_DROP_EVENTINFO;
+	BEGIN
+		event_info := schema_triggers.get_trigger_drop_eventinfo();
+		IF (event_info.old).tgisinternal IS TRUE THEN
+			-- Internal triggers (e.g. for enforcing foreign keys) include an
+			-- Oid value in their automatically-generated name;  thus we are
+			-- unable to include this in the regression test's output...
+			RAISE NOTICE 'on_trigger_drop: dropping internal trigger.';
+		ELSE
+			RAISE NOTICE 'on_trigger_drop: (tgname=''%'', tgrelid=''%'', tgenabled=''%'')',
+				(event_info.old).tgname, (event_info.old).tgrelid::REGCLASS,
+				(event_info.old).tgenabled;
+		END IF;
+	END;
+$$;
+CREATE EVENT TRIGGER trigdrop ON trigger_drop
+	EXECUTE PROCEDURE on_trigger_drop();
 -- TODO
 -- Create some empty tables.
 CREATE TABLE foo();
@@ -60,7 +82,9 @@ ALTER TABLE foobar ENABLE ALWAYS TRIGGER foobar_trig;
 ALTER TABLE foobar DISABLE TRIGGER foobar_trig;
 -- Drop the triggers.
 DROP TRIGGER foo_trig2 ON foo;
+NOTICE:  on_trigger_drop: (tgname='foo_trig2', tgrelid='foo', tgenabled='O')
 DROP TRIGGER foobar_trig ON foobar;
+NOTICE:  on_trigger_drop: (tgname='foobar_trig', tgrelid='foobar', tgenabled='D')
 -- Create a table with an automatically-created constraint trigger (for
 -- the FOREIGN KEY) and then drop the tables, which will also drop the 
 -- constraint triggers.
@@ -68,8 +92,14 @@ CREATE TABLE baz(a INTEGER PRIMARY KEY, b TEXT, c BOOLEAN);
 CREATE TABLE xyzzy(d INTEGER NOT NULL REFERENCES baz);
 DROP TABLE baz CASCADE;
 NOTICE:  drop cascades to constraint xyzzy_d_fkey on table xyzzy
+NOTICE:  on_trigger_drop: dropping internal trigger.
+NOTICE:  on_trigger_drop: dropping internal trigger.
+NOTICE:  on_trigger_drop: dropping internal trigger.
+NOTICE:  on_trigger_drop: dropping internal trigger.
 -- Clean up.
 DROP EVENT TRIGGER trigcreate;
+DROP EVENT TRIGGER trigdrop;
 DROP FUNCTION on_trigger_create();
+DROP FUNCTION on_trigger_drop();
 DROP FUNCTION ignore();
 DROP EXTENSION schema_triggers;

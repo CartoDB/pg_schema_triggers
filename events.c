@@ -524,8 +524,60 @@ trigger_alter_event(Oid trigoid)
 /*** Event:  trigger_drop ***/
 
 
+typedef struct TriggerDrop_EventInfo {
+	EventInfo header;
+	Oid trigger_oid;
+	HeapTuple old;
+} TriggerDrop_EventInfo;
+
+
 void
 trigger_drop_event(Oid trigoid)
 {
-	return;
+	TriggerDrop_EventInfo *info;
+
+	/* Set up the event info and save the old pg_trigger row. */
+	EnterEventMemoryContext();
+	info = (TriggerDrop_EventInfo *)EventInfoAlloc("trigger_drop", sizeof(*info));
+	info->trigger_oid = trigoid;
+	info->old = pgtrigger_fetch_tuple(trigoid, SnapshotNow);
+	LeaveEventMemoryContext();
+	if (!HeapTupleIsValid(info->old))
+		elog(ERROR, "couldn't find old pg_trigger row for oid=(%u)", trigoid);
+
+	/* Enqueue the event. */
+	EnqueueEvent((EventInfo*) info);
+}
+
+
+PG_FUNCTION_INFO_V1(trigger_drop_eventinfo);
+Datum
+trigger_drop_eventinfo(PG_FUNCTION_ARGS)
+{
+	TriggerDrop_EventInfo *info;
+	TupleDesc tupdesc;
+	Datum result[2];
+	bool result_isnull[2];
+	HeapTuple tuple;
+	
+	/* Get the tupdesc for our return type. */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("function returning record called in context "
+				        "that cannot accept type record")));
+	BlessTupleDesc(tupdesc);
+	Assert(tupdesc->natts == sizeof result / sizeof result[0]);
+	Assert(tupdesc->natts == sizeof result_isnull / sizeof result_isnull[0]);
+
+	/* Get our EventInfo struct. */
+	info = (TriggerDrop_EventInfo *)GetCurrentEvent("trigger_drop");
+
+	/* Form and return the tuple. */
+	result[0] = ObjectIdGetDatum(info->trigger_oid);
+	result[1] = HeapTupleGetDatum(info->old);
+	result_isnull[0] = false;
+	result_isnull[1] = false;
+	tuple = heap_form_tuple(tupdesc, result, result_isnull);
+	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
 }
