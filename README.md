@@ -32,7 +32,6 @@ the CREATE EVENT TRIGGER command.
                           a RELATION_CREATE_EVENTINFO record: 
 
                               relation      REGCLASS
-                              relnamespace  OID
                               new			PG_CATALOG.PG_CLASS
 
 
