@@ -1,0 +1,14 @@
+Source: pg-schema-triggers
+Priority: extra
+Maintainer: Alejandro Martínez <yosoyzenitram@gmail.com>
+Build-Depends: debhelper (>= 8.0.0), postgresql-server-dev-9.3
+Standards-Version: 3.9.2
+Section: libs
+Homepage: http://github.com/CartoDB/pg-schema-triggers
+
+
+Package: postgresql-9.3-pg-schema-triggers
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, postgresql-9.3
+Description: PostgreSQL Schema Triggers extension 
