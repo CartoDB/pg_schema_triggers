@@ -167,7 +167,7 @@ recognize the new events and for the event triggers to be fired upon those
 events happening) the `pg_schema_triggers.so` library must be loaded.  Add
 a line to `postgresql.conf`:
 
-    shared_preload_libraries = schema_triggers.so
+    shared_preload_libraries = 'schema_triggers.so'
 
 Alternately, the new events can be enabled during a single session with the
 LOAD command.  This is unlikely to be useful except during testing:
