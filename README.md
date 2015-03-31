@@ -32,30 +32,30 @@ the CREATE EVENT TRIGGER command.
                           a RELATION_CREATE_EVENTINFO record: 
 
                               relation      REGCLASS
-                              new			PG_CATALOG.PG_CLASS
+                              new           PG_CATALOG.PG_CLASS
 
 
     relation_alter        An existing relation has been altered.  [This event
-    					  corresponds to the OAT_POST_ALTER hook.]
+                          corresponds to the OAT_POST_ALTER hook.]
 
                           From the event trigger function, calling the
                           get_relation_alter_eventinfo() function will return
                           a RELATION_ALTER_EVENTINFO record: 
 
                               relation      REGCLASS
-                              old			PG_CATALOG.PG_CLASS
-                              new			PG_CATALOG.PG_CLASS
+                              old           PG_CATALOG.PG_CLASS
+                              new           PG_CATALOG.PG_CLASS
 
 
     relation_drop         An existing relation has been dropped.  [This event
-    					  corresponds to the OAT_DROP hook.]
+                          corresponds to the OAT_DROP hook.]
 
                           From the event trigger function, calling the
                           get_relation_drop_eventinfo() function will return
                           a RELATION_DROP_EVENTINFO record: 
 
-                              old_relation_oid REGCLASS
-                              old			PG_CATALOG.PG_CLASS
+                              old_relation_oid  REGCLASS
+                              old               PG_CATALOG.PG_CLASS
 
 
     column_add            A new column has been added to a relation.  Note,
@@ -67,21 +67,21 @@ the CREATE EVENT TRIGGER command.
                           a COLUMN_ADD_EVENTINFO record: 
 
                               relation      REGCLASS
-                              attnum		INT16
-                              new			PG_CATALOG.PG_ATTRIBUTE
+                              attnum        INT16
+                              new           PG_CATALOG.PG_ATTRIBUTE
 
 
     column_alter          An existing column has been altered.  [This event
-    					  corresponds to the OAT_POST_ALTER hook.]
+                          corresponds to the OAT_POST_ALTER hook.]
 
                           From the event trigger function, calling the
                           get_column_alter_eventinfo() function will return
                           a COLUMN_ALTER_EVENTINFO record: 
 
                               relation      REGCLASS
-                              attnum		INT16
-                              old			PG_CATALOG.PG_ATTRIBUTE
-                              new			PG_CATALOG.PG_ATTRIBUTE
+                              attnum        INT16
+                              old           PG_CATALOG.PG_ATTRIBUTE
+                              new           PG_CATALOG.PG_ATTRIBUTE
 
 
     column_drop           An existing column has been dropped.
@@ -91,8 +91,8 @@ the CREATE EVENT TRIGGER command.
                           a COLUMN_DROP_EVENTINFO record: 
 
                               relation      REGCLASS
-                              attnum		INT16
-                              old			PG_CATALOG.PG_ATTRIBUTE
+                              attnum        INT16
+                              old           PG_CATALOG.PG_ATTRIBUTE
 
 
     trigger_create        A new trigger has been created.
@@ -103,7 +103,7 @@ the CREATE EVENT TRIGGER command.
 
                               trigoid       OID
                               is_internal   BOOLEAN
-                              new			PG_CATALOG.PG_TRIGGER
+                              new           PG_CATALOG.PG_TRIGGER
 
 
     trigger_drop          An existing trigger has been dropped.
@@ -113,7 +113,7 @@ the CREATE EVENT TRIGGER command.
                           a TRIGGER_DROP_EVENTINFO record: 
 
                               trigoid       OID
-                              old			PG_CATALOG.PG_TRIGGER
+                              old           PG_CATALOG.PG_TRIGGER
 
 
 Examples
@@ -121,7 +121,7 @@ Examples
 This example issues a NOTICE whenever a table is created with a name that
 begins with `test_`.
 
-    postgres=# CREATE FUNCTION on_relation_create()
+    postgres=# CREATE OR REPLACE FUNCTION on_relation_create()
                RETURNS event_trigger
                LANGUAGE plpgsql
                AS $$
@@ -133,7 +133,7 @@ begins with `test_`.
                    IF NOT event_info.relation::text LIKE 'test_%' THEN RETURN; END IF;
                    RAISE NOTICE 'Relation (%) created in namespace (oid=%).',
                      event_info.relation,
-                     event_info.relnamespace;
+                     (event_info.new).relnamespace;
                    RAISE NOTICE 'new pg_class row: %', event_info.new;
                  END;
                $$;
