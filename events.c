@@ -25,6 +25,7 @@
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
+#include "utils/snapmgr.h"
 #include "utils/tqual.h"
 
 
@@ -115,7 +116,7 @@ relation_alter_event(Oid rel)
 	EnterEventMemoryContext();
 	info = (RelationAlter_EventInfo *)EventInfoAlloc("relation_alter", sizeof(*info));
 	info->relation = rel;
-	info->old = pgclass_fetch_tuple(rel, SnapshotNow);
+	info->old = pgclass_fetch_tuple(rel, GetCatalogSnapshot(rel));
 	info->new = pgclass_fetch_tuple(rel, SnapshotSelf);
 	LeaveEventMemoryContext();
 	if (!HeapTupleIsValid(info->old))
@@ -182,7 +183,7 @@ relation_drop_event(Oid rel)
 	EnterEventMemoryContext();
 	info = (RelationDrop_EventInfo *)EventInfoAlloc("relation_drop", sizeof(*info));
 	info->relation = rel;
-	info->old = pgclass_fetch_tuple(rel, SnapshotNow);
+	info->old = pgclass_fetch_tuple(rel, GetCatalogSnapshot(rel));
 	LeaveEventMemoryContext();
 	if (!HeapTupleIsValid(info->old))
 		elog(ERROR, "couldn't find old pg_class row for oid=(%u)", rel);
@@ -313,7 +314,7 @@ column_alter_event(Oid rel, int16 attnum)
 	info = (ColumnAlter_EventInfo *)EventInfoAlloc("column_alter", sizeof(*info));
 	info->relation = rel;
 	info->attnum = attnum;
-	info->old = pgattribute_fetch_tuple(rel, attnum, SnapshotNow);
+	info->old = pgattribute_fetch_tuple(rel, attnum, GetCatalogSnapshot(rel));
 	info->new = pgattribute_fetch_tuple(rel, attnum, SnapshotSelf);
 	LeaveEventMemoryContext();
 	if (!HeapTupleIsValid(info->old))
@@ -384,7 +385,7 @@ column_drop_event(Oid rel, int16 attnum)
 	info = (ColumnDrop_EventInfo *)EventInfoAlloc("column_drop", sizeof(*info));
 	info->relation = rel;
 	info->attnum = attnum;
-	info->old = pgattribute_fetch_tuple(rel, attnum, SnapshotNow);
+	info->old = pgattribute_fetch_tuple(rel, attnum, GetCatalogSnapshot(rel));
 	LeaveEventMemoryContext();
 	if (!HeapTupleIsValid(info->old))
 		elog(ERROR, "couldn't find old pg_attribute row for oid,attnum=(%u,%d)", rel, attnum);
@@ -540,7 +541,7 @@ trigger_drop_event(Oid trigoid)
 	EnterEventMemoryContext();
 	info = (TriggerDrop_EventInfo *)EventInfoAlloc("trigger_drop", sizeof(*info));
 	info->trigger_oid = trigoid;
-	info->old = pgtrigger_fetch_tuple(trigoid, SnapshotNow);
+	info->old = pgtrigger_fetch_tuple(trigoid, GetCatalogSnapshot(trigoid));
 	LeaveEventMemoryContext();
 	if (!HeapTupleIsValid(info->old))
 		elog(ERROR, "couldn't find old pg_trigger row for oid=(%u)", trigoid);

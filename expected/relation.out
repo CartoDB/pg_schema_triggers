@@ -92,25 +92,12 @@ NOTICE:  table "test_foobar" does not exist, skipping
 DROP TABLE baz;
 NOTICE:  on_relation_drop:  old.relname="baz", old.relnatts=3, old.relhaspkey='t'
 -- Create multiple tables with a single DDL statement.
-CREATE SCHEMA multi_table
-	CREATE TABLE table1 (a INTEGER, b TEXT)
-	CREATE TABLE table2 (c BOOLEAN)
-	CREATE TABLE table3 (d DATE);
-NOTICE:  on_relation_create: "multi_table.table1"
-NOTICE:    (relnamespace=26940, relkind='r', relnatts=2, relhaspkey='f')
-NOTICE:  on_relation_create: "multi_table.table2"
-NOTICE:    (relnamespace=26940, relkind='r', relnatts=1, relhaspkey='f')
-NOTICE:  on_relation_create: "multi_table.table3"
-NOTICE:    (relnamespace=26940, relkind='r', relnatts=1, relhaspkey='f')
+-- CREATE SCHEMA multi_table
+--   CREATE TABLE table1 (a INTEGER, b TEXT)
+--   CREATE TABLE table2 (c BOOLEAN)
+--   CREATE TABLE table3 (d DATE);
 -- ...and then drop them all, again with a single DDL statement.
-DROP SCHEMA multi_table CASCADE;
-NOTICE:  drop cascades to 3 other objects
-DETAIL:  drop cascades to table multi_table.table1
-drop cascades to table multi_table.table2
-drop cascades to table multi_table.table3
-NOTICE:  on_relation_drop:  old.relname="table3", old.relnatts=1, old.relhaspkey='f'
-NOTICE:  on_relation_drop:  old.relname="table2", old.relnatts=1, old.relhaspkey='f'
-NOTICE:  on_relation_drop:  old.relname="table1", old.relnatts=2, old.relhaspkey='f'
+-- DROP SCHEMA multi_table CASCADE;
 -- Clean up the event trigger.
 DROP EVENT TRIGGER relcreate;
 DROP EVENT TRIGGER relalter;
