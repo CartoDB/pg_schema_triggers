@@ -13,7 +13,7 @@
     "release_status": "testing",
     "resources": {
         "repository": {
-            "web": "http://code.malloclabs.com/pg_schema_triggers"
+            "web": "https://github.com/CartoDB/pg_schema_triggers"
         }
     },
     "maintainer": "Andrew Tipton <andrew@kiwidrew.com>",

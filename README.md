@@ -1,23 +1,20 @@
 pg\_schema\_triggers 0.1
 ========================
-This extension adds schema change events to the Event Triggers feature in
-Postgres 9.3 and higher.  By using the ProcessUtility hook, it transparently
-adds new event types to the CREATE EVENT TRIGGER command.  These new events
+
+This extension adds schema change events to the [Event Triggers](http://www.postgresql.org/docs/9.4/static/event-triggers.html) feature in
+PostgreSQL 9.3 and higher.  By using the ProcessUtility hook, it transparently
+adds new event types to the `CREATE EVENT TRIGGER` command.  These new events
 include column add, drop, and alter as well as table create and rename.
 
 Each event has access to relevant information, such as the table's oid and
 the old and new names.
 
-This extension relies on the Event Triggers functionality added in Postgres
-version 9.3;  9.4devel ought to be working as well.
-
-Visit the [Project homepage](http://code.malloclabs.com/pg_schema_triggers).
-
 
 New Events
 ----------
+
 This extension adds support for several additional events that may be used with
-the CREATE EVENT TRIGGER command.
+the `CREATE EVENT TRIGGER` command.
 
     Event Name            Description
     --------------------  ----------------------------------------------------
@@ -151,6 +148,9 @@ begins with `test_`.
 
 Build/install
 -------------
+
+This extension requires PostgreSQL 9.3 and higher, with the development packages and utilities (in particular, `pg_config`) installed.
+
 To build, install, and test:
 
     $ make
@@ -158,11 +158,11 @@ To build, install, and test:
     $ make installcheck
 
 To enable this extension for a database, ensure that the extension has been
-installed (`make install`) and then use the CREATE EXTENSION mechanism:
+installed (`make install`) and then use the `CREATE EXTENSION` mechanism:
 
     CREATE EXTENSION schema_triggers;
 
-In order for the extension to work (that is, for CREATE EVENT TRIGGER to
+In order for the extension to work (that is, for `CREATE EVENT TRIGGER` to
 recognize the new events and for the event triggers to be fired upon those
 events happening) the `pg_schema_triggers.so` library must be loaded.  Add
 a line to `postgresql.conf`:
@@ -170,13 +170,14 @@ a line to `postgresql.conf`:
     shared_preload_libraries = 'schema_triggers.so'
 
 Alternately, the new events can be enabled during a single session with the
-LOAD command.  This is unlikely to be useful except during testing:
+`LOAD` command.  This is unlikely to be useful except during testing:
 
     LOAD 'schema_triggers.so';
 
 
 Authors and Credits
 -------------------
+
 Andrew Tipton       andrew@kiwidrew.com
 
 Developed by malloc() labs limited (www.malloclabs.com) for CartoDB.
@@ -184,5 +185,5 @@ Developed by malloc() labs limited (www.malloclabs.com) for CartoDB.
 
 License
 -------
-This Postgres extension is free software;  you may use it under the same terms
-as Postgres itself.  (See the `LICENSE` file for full licensing information.)
+This PostgreSQL extension is free software;  you may use it under the same terms
+as [PostgreSQL](http://postgresql.org) itself.  (See the `LICENSE` file for full licensing information.)
