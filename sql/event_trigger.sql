@@ -1,9 +1,5 @@
 -- Test that the CREATE/ALTER/DROP EVENT TRIGGER commands work as expected.
 
--- First, try creating a bogus event trigger before we have loaded the
--- extension.
-CREATE EVENT TRIGGER wont_work ON relation_create
-	EXECUTE PROCEDURE foo();
 CREATE EXTENSION schema_triggers;
 
 -- Exercise the various cases that shouldn't work.
