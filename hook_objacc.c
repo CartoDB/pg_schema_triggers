@@ -39,9 +39,9 @@ void
 install_objacc_hook()
 {
 	if (object_access_hook != NULL)
-		elog(FATAL, "an object_access hook is already installed.");
-	old_objectaccess_hook = object_access_hook;
-	object_access_hook = objectaccess_hook;
+		elog(WARNING, "pg_schema_triggers is getting into an object_access hook chain");
+	old_objectaccess_hook = object_access_hook; /* save the old hook */
+	object_access_hook = objectaccess_hook; /* put in our hook */
 }
 
 
@@ -55,8 +55,8 @@ void
 remove_objacc_hook()
 {
 	if (object_access_hook != objectaccess_hook)
-		elog(FATAL, "hook conflict, our object_access hook has been removed.");
-	object_access_hook = old_objectaccess_hook;
+		elog(WARNING, "pg_schema_triggers is getting out of an object_access hook chain");
+	object_access_hook = old_objectaccess_hook; /* put back the old hook */
 }
 
 
@@ -75,6 +75,11 @@ objectaccess_hook(ObjectAccessType access,
 	int subId,
 	void *arg)
 {
+
+	/* Allow other hooks to run first */
+	if ( old_objectaccess_hook )
+		(*old_objectaccess_hook) (access, classId, objectId, subId, arg);
+
 	switch (access)
 	{
 		case OAT_POST_CREATE:
