@@ -31,8 +31,8 @@ PG_MODULE_MAGIC;
 void _PG_init(void);
 void _PG_fini(void);
 
-static ProcessUtility_hook_type old_utility_hook = NULL;
 static int stmt_createEventTrigger_before(CreateEventTrigStmt *stmt);
+static ProcessUtility_hook_type old_ProcessUtility = NULL;
 
 static void utility_hook(Node *parsetree,
 	const char *queryString,
@@ -51,9 +51,10 @@ static void utility_hook(Node *parsetree,
 void
 _PG_init(void)
 {
+	elog(INFO, "pg_schema_triggers initializing");
 	if (ProcessUtility_hook != NULL)
-		elog(FATAL, "a ProcessUtility hook is already installed.");
-	old_utility_hook = ProcessUtility_hook;
+		elog(WARNING, "pg_schema_triggers is getting into a ProcessUtility hook chain");
+	old_ProcessUtility = ProcessUtility_hook;
 	ProcessUtility_hook = utility_hook;
 
 	install_objacc_hook();
@@ -63,9 +64,11 @@ _PG_init(void)
 void
 _PG_fini(void)
 {
+	elog(INFO, "pg_schema_triggers shutting down");
 	if (ProcessUtility_hook != utility_hook)
-		elog(FATAL, "hook conflict, our ProcessUtility hook has been removed.");
-	ProcessUtility_hook = old_utility_hook;
+		elog(WARNING, "pg_schema_triggers is getting out of a ProcessUtility hook chain");
+	else
+		ProcessUtility_hook = old_ProcessUtility;
 
 	remove_objacc_hook();
 }
@@ -100,7 +103,17 @@ utility_hook(Node *parsetree,
 
 	PG_TRY();
 	{
-		standard_ProcessUtility(parsetree, queryString, context, params, dest, completionTag);
+		/* If there's another hook in the chain, pass on the action */
+		/* and hope/pray that it passes it along eventually to the */
+		/* standard_ProcessUtility like a good little hook. */
+		if (old_ProcessUtility)
+			old_ProcessUtility(parsetree, queryString,
+								context, params,
+								dest, completionTag);
+		else
+			standard_ProcessUtility(parsetree, queryString,
+								context, params,
+								dest, completionTag);
 	}
 	PG_CATCH();
 	{
